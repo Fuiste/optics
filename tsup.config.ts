@@ -1,0 +1,13 @@
+import { defineConfig } from 'tsup'
+
+export default defineConfig({
+  entry: ['src/index.ts'],
+  format: ['esm'],
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  minify: false,
+  target: 'es2020',
+  treeshake: true,
+  esbuildOptions(options) { options.outExtension = { '.js': '.mjs' } },
+})
