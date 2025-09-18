@@ -12,10 +12,10 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "prepare": "husky install",
-    "prepublishOnly": "npm run build",
-    "release:publish": "npm publish --access public",
+    "prepublishOnly": "pnpm  build",
+    "release:publish": "pnpm publish --access public",
     "test:watch": "vitest",
-    "publish": "npm publish --access public"
+    "publish": "pnpm publish --access public"
   },
   "keywords": [],
   "author": "",

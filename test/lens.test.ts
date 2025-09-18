@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Lens, Prism } from '../src'
+import { Iso } from '../src'
 
 describe('Lens', () => {
   describe('prop lens', () => {
@@ -626,5 +627,50 @@ describe('Prism', () => {
       // @ts-expect-error - should not allow setting wrong type
       addressPrism.set('invalid')(person)
     })
+  })
+})
+
+describe('Iso', () => {
+  it('should convert back and forth', () => {
+    const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+
+    expect(numberString.to(42)).toBe('42')
+    expect(numberString.from('123')).toBe(123)
+  })
+
+  it('Lens ∘ Iso should be a Lens', () => {
+    type Model = { count: number }
+    const countLens = Lens<Model>().prop('count')
+    const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+
+    const countAsString = Lens<Model>().compose(countLens, numberString)
+
+    const m: Model = { count: 7 }
+    expect(countAsString.get(m)).toBe('7')
+    const updated = countAsString.set('10')(m)
+    expect(updated.count).toBe(10)
+
+    const updatedFn = countAsString.set((s) => (parseInt(s, 10) + 1).toString())(m)
+    expect(updatedFn.count).toBe(8)
+  })
+
+  it('Prism ∘ Iso should be a Prism', () => {
+    type Model = { count?: number }
+    const countPrism = Prism<Model>().of({
+      get: (m) => m.count,
+      set: (count) => (m) => ({ ...m, count }),
+    })
+    const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+
+    const prism = Prism<Model>().compose(countPrism, numberString)
+
+    expect(prism.get({})).toBeUndefined()
+    expect(prism.get({ count: 5 })).toBe('5')
+
+    const updated = prism.set('9')({})
+    expect(updated.count).toBe(9)
+
+    const updatedFn = prism.set((s) => (parseInt(s, 10) + 1).toString())({ count: 3 })
+    expect(updatedFn.count).toBe(4)
   })
 })

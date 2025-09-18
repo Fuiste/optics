@@ -1,16 +1,22 @@
-# Lenses
+# Optics (Lens, Prism, Iso)
 
-Type-safe, functional optics for immutable data: lenses for required data and prisms for optional/union data.
+Type-safe, functional optics for immutable data: lenses for required data, prisms for optional/union data, and isomorphisms for total, invertible mappings.
 
 ## What and why
 
-- Lens: Focus on a required field; always gets a value and can set immutably
-- Prism: Focus on an optional or union branch; get may return undefined
-- Composition: You can compose any combination of lens and prism
+- **Lens**: Focus on a required field; always gets a value and can set immutably
+- **Prism**: Focus on an optional or union branch; get may return undefined
+- **Iso**: Total, invertible mapping between two types `(to, from)`
+- **Composition**: You can compose any combination of lens, prism, and iso
   - Lens ∘ Lens => Lens
   - Lens ∘ Prism => Prism
+  - Lens ∘ Iso => Lens
   - Prism ∘ Lens => Prism
   - Prism ∘ Prism => Prism
+  - Prism ∘ Iso => Prism
+  - Iso ∘ Lens => Lens
+  - Iso ∘ Prism => Prism
+  - Iso ∘ Iso => Iso
 
 Core principles:
 
@@ -74,7 +80,7 @@ addressPrism.set((addr) => ({ ...addr, city: 'LA' }))({
 ### Composition
 
 ```typescript
-import { Lens, Prism } from '@fuiste/optics'
+import { Lens, Prism, Iso } from '@fuiste/optics'
 
 type Address = { street: string; city: string }
 type Person = { name: string; address?: Address }
@@ -97,6 +103,24 @@ const updated = cityPrism.set('LA')({ name: 'A' }) // unchanged when address is 
 // Function updaters also work
 cityPrism.set((city) => city.toUpperCase())({ name: 'A', address: { street: '1', city: 'nyc' } })
 // => city becomes 'NYC'
+
+// Lens ∘ Iso => Lens (representing as string)
+const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+type Model = { count: number }
+const countLens = Lens<Model>().prop('count')
+const countAsString = Lens<Model>().compose(countLens, numberString)
+countAsString.get({ count: 7 }) // '7'
+countAsString.set('10')({ count: 7 }) // { count: 10 }
+
+// Prism ∘ Iso => Prism (materializes on concrete values)
+type MaybeCount = { count?: number }
+const countPrism = Prism<MaybeCount>().of({
+  get: (m) => m.count,
+  set: (count) => (m) => ({ ...m, count }),
+})
+const countAsStringPrism = Prism<MaybeCount>().compose(countPrism, numberString)
+countAsStringPrism.get({}) // undefined
+countAsStringPrism.set('9')({}) // { count: 9 } // concrete values materialize
 ```
 
 ### Arrays
@@ -202,12 +226,15 @@ composed.set((v) => !v)({}) // unchanged
 // Lens factory for a source type S
 Lens<S>()
   .prop<K extends keyof S>(key: K): Lens<S, S[K]>
-  .compose<A, B>(outer: Lens<S, A>, inner: Lens<A, B> | Prism<A, B>): Lens<S, B> | Prism<S, B>
+  .compose<A, B>(outer: Lens<S, A>, inner: Lens<A, B> | Prism<A, B> | Iso<A, B>): Lens<S, B> | Prism<S, B>
 
 // Prism factory for a source type S
 Prism<S>()
   .of<A>({ get: (s: S) => A | undefined; set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T }): Prism<S, A>
-  .compose<A, B>(outer: Prism<S, A>, inner: Lens<A, B> | Prism<A, B>): Prism<S, B>
+  .compose<A, B>(outer: Prism<S, A>, inner: Lens<A, B> | Prism<A, B> | Iso<A, B>): Prism<S, B>
+
+// Iso constructor
+Iso<S, A>({ to: (s: S) => A, from: (a: A) => S }): Iso<S, A>
 ```
 
 ### Interfaces
@@ -227,13 +254,20 @@ export type Prism<S, A> = {
   get: (s: S) => A | undefined
   set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
 }
+
+// A total, invertible mapping between S and A
+export type Iso<S, A> = {
+  _tag: 'iso'
+  to: (s: S) => A
+  from: (a: A) => S
+}
 ```
 
 Notes:
 
 - `Lens#set` and `Prism#set` both accept a value or function and return a new object of the same structural type as the input. Unchanged branches are preserved
 - `Prism#get` may return `undefined`. When using composed prisms, any missing outer branch results in `undefined`
-- `Prism#set` on a composed path that is currently missing is a no-op by default. If you want to create missing branches, do it in the outer prism’s `set`
+- `Prism#set` on a composed path that is currently missing is a no-op by default. If you want to create missing branches, do it in the outer prism’s `set`. An exception is when composing with `Iso`: providing a concrete value will be materialized via the outer `Prism#set`, while providing a function remains a no-op if missing
 
 ### Utility types
 
@@ -243,6 +277,8 @@ InferLensSource<L extends Lens<any, any>>
 InferLensTarget<L extends Lens<any, any>>
 InferPrismSource<P extends Prism<any, any>>
 InferPrismTarget<P extends Prism<any, any>>
+InferIsoSource<I extends Iso<any, any>>
+InferIsoTarget<I extends Iso<any, any>>
 ```
 
 Examples:

@@ -26,6 +26,19 @@ export type Prism<S, A> = {
 }
 
 /**
+ * A total, invertible mapping (isomorphism) between two types.
+ * @template S - The source type
+ * @template A - The target type
+ */
+export type Iso<S, A> = {
+  _tag: 'iso'
+  /** Maps a value from S to A */
+  to: (s: S) => A
+  /** Maps a value from A back to S */
+  from: (a: A) => S
+}
+
+/**
  * Extracts the source type from a lens type
  * @template L - The lens type to extract the source from
  * @example
@@ -82,6 +95,22 @@ export type InferPrismTarget<P extends Prism<any, any>> =
   P extends Prism<any, infer A> ? A : never
 
 /**
+ * Extracts the source type from an iso type
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type InferIsoSource<I extends Iso<any, any>> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  I extends Iso<infer S, any> ? S : never
+
+/**
+ * Extracts the target type from an iso type
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type InferIsoTarget<I extends Iso<any, any>> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  I extends Iso<any, infer A> ? A : never
+
+/**
  * Creates a new lens with the given getter and setter functions
  * @template S - The source type
  * @template A - The target type
@@ -113,6 +142,12 @@ const makePrism = <S, A>(prism: {
   ...prism,
 })
 
+/** Creates a new iso with the given to/from functions */
+const makeIso = <S, A>(iso: { to: (s: S) => A; from: (a: A) => S }): Iso<S, A> => ({
+  _tag: 'iso',
+  ...iso,
+})
+
 /**
  * Creates a lens for accessing a specific property of an object
  * @template S - The source object type
@@ -135,12 +170,17 @@ const prop = <S, K extends keyof S>(key: K) =>
  */
 function compose<S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B>
 function compose<S, A, B>(outer: Lens<S, A>, inner: Prism<A, B>): Prism<S, B>
+function compose<S, A, B>(outer: Lens<S, A>, inner: Iso<A, B>): Lens<S, B>
 function compose<S, A, B>(outer: Prism<S, A>, inner: Lens<A, B>): Prism<S, B>
 function compose<S, A, B>(outer: Prism<S, A>, inner: Prism<A, B>): Prism<S, B>
+function compose<S, A, B>(outer: Prism<S, A>, inner: Iso<A, B>): Prism<S, B>
+function compose<S, A, B>(outer: Iso<S, A>, inner: Lens<A, B>): Lens<S, B>
+function compose<S, A, B>(outer: Iso<S, A>, inner: Prism<A, B>): Prism<S, B>
+function compose<S, A, B>(outer: Iso<S, A>, inner: Iso<A, B>): Iso<S, B>
 function compose<S, A, B>(
-  outer: Lens<S, A> | Prism<S, A>,
-  inner: Lens<A, B> | Prism<A, B>,
-): Lens<S, B> | Prism<S, B> {
+  outer: Lens<S, A> | Prism<S, A> | Iso<S, A>,
+  inner: Lens<A, B> | Prism<A, B> | Iso<A, B>,
+): Lens<S, B> | Prism<S, B> | Iso<S, B> {
   // Lens ∘ Lens => Lens
   if (outer._tag === 'lens' && inner._tag === 'lens') {
     return makeLens(
@@ -153,10 +193,85 @@ function compose<S, A, B>(
     )
   }
 
+  // Lens ∘ Iso => Lens
+  if (outer._tag === 'lens' && inner._tag === 'iso') {
+    return makeLens<S, B>(
+      (s: S) => inner.to(outer.get(s)),
+      (b: B | ((b: B) => B)) =>
+        <T extends S>(s: T) => {
+          const currentA = outer.get(s)
+          const nextB = typeof b === 'function' ? (b as (b: B) => B)(inner.to(currentA)) : b
+          const newA = inner.from(nextB)
+          return outer.set(newA)(s)
+        },
+    )
+  }
+
+  // Iso ∘ Lens => Lens
+  if (outer._tag === 'iso' && inner._tag === 'lens') {
+    return makeLens<S, B>(
+      (s: S) => inner.get(outer.to(s)),
+      (b: B | ((b: B) => B)) =>
+        <T extends S>(s: T) => {
+          const a = outer.to(s)
+          const newA = inner.set(b)(a)
+          return outer.from(newA) as T
+        },
+    )
+  }
+
+  // Prism ∘ Iso => Prism
+  if (outer._tag === 'prism' && inner._tag === 'iso') {
+    return makePrism<S, B>({
+      get: (s: S) => {
+        const outerValue = outer.get(s)
+        return outerValue === undefined ? undefined : inner.to(outerValue)
+      },
+      set:
+        (b: B | ((b: B) => B)) =>
+        <T extends S>(s: T) => {
+          const outerValue = outer.get(s)
+          if (typeof b === 'function') {
+            if (outerValue === undefined) return s
+            const currentB = inner.to(outerValue)
+            const nextB = (b as (b: B) => B)(currentB)
+            const newOuterValue = inner.from(nextB)
+            return outer.set(newOuterValue)(s)
+          }
+          // When provided a concrete value, materialize via outer.set even if missing
+          const newOuterValue = inner.from(b as B)
+          return outer.set(newOuterValue)(s)
+        },
+    })
+  }
+
+  // Iso ∘ Prism => Prism
+  if (outer._tag === 'iso' && inner._tag === 'prism') {
+    return makePrism<S, B>({
+      get: (s: S) => inner.get(outer.to(s)),
+      set:
+        (b: B | ((b: B) => B)) =>
+        <T extends S>(s: T) => {
+          const a = outer.to(s)
+          const newA = inner.set(b)(a)
+          return outer.from(newA) as T
+        },
+    })
+  }
+
+  // Iso ∘ Iso => Iso
+  if (outer._tag === 'iso' && inner._tag === 'iso') {
+    return makeIso<S, B>({
+      to: (s: S) => inner.to(outer.to(s)),
+      from: (b: B) => outer.from(inner.from(b)),
+    })
+  }
+
   // Otherwise, return a Prism
   return makePrism<S, B>({
     get: (s: S) => {
-      const outerValue = outer.get(s as S)
+      const o = outer as Lens<S, A> | Prism<S, A>
+      const outerValue = o.get(s as S)
       if (outerValue === undefined) return undefined
       // inner could be lens or prism
       // lens.get returns B, prism.get returns B | undefined
@@ -165,10 +280,11 @@ function compose<S, A, B>(
     set:
       (b: B | ((b: B) => B)) =>
       <T extends S>(s: T) => {
-        const outerValue = outer.get(s as S)
+        const o = outer as Lens<S, A> | Prism<S, A>
+        const outerValue = o.get(s as S)
         if (outerValue === undefined) return s
         const newOuterValue = (inner as Lens<A, B> | Prism<A, B>).set(b)(outerValue as A)
-        return outer.set(newOuterValue as A)(s as T)
+        return o.set(newOuterValue as A)(s as T)
       },
   })
 }
@@ -181,15 +297,16 @@ function compose<S, A, B>(
 const createLens = <S>() => {
   function composeForLens<A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B>
   function composeForLens<A, B>(outer: Lens<S, A>, inner: Prism<A, B>): Prism<S, B>
+  function composeForLens<A, B>(outer: Lens<S, A>, inner: Iso<A, B>): Lens<S, B>
   function composeForLens<A, B>(
     outer: Lens<S, A>,
-    inner: Lens<A, B> | Prism<A, B>,
+    inner: Lens<A, B> | Prism<A, B> | Iso<A, B>,
   ): Lens<S, B> | Prism<S, B> {
-    /**
-     * Yes this weird ternary is necessary for the function overloads to
-     * resolve correctly.
-     */
-    return inner._tag === 'lens' ? compose(outer, inner) : compose(outer, inner)
+    return inner._tag === 'lens'
+      ? (compose(outer, inner) as Lens<S, B>)
+      : inner._tag === 'prism'
+      ? (compose(outer, inner) as Prism<S, B>)
+      : (compose(outer, inner) as Lens<S, B>)
   }
 
   return {
@@ -208,8 +325,16 @@ const createLens = <S>() => {
 const createPrism = <S>() => {
   function composeForPrism<A, B>(outer: Prism<S, A>, inner: Lens<A, B>): Prism<S, B>
   function composeForPrism<A, B>(outer: Prism<S, A>, inner: Prism<A, B>): Prism<S, B>
-  function composeForPrism<A, B>(outer: Prism<S, A>, inner: Lens<A, B> | Prism<A, B>): Prism<S, B> {
-    return inner._tag === 'lens' ? compose(outer, inner) : compose(outer, inner)
+  function composeForPrism<A, B>(outer: Prism<S, A>, inner: Iso<A, B>): Prism<S, B>
+  function composeForPrism<A, B>(outer: Prism<S, A>, inner: Lens<A, B> | Prism<A, B> | Iso<A, B>): Prism<S, B> {
+    const withLens = <A0, B0>(o: Prism<S, A0>, i: Lens<A0, B0>) => compose(o, i)
+    const withPrism = <A0, B0>(o: Prism<S, A0>, i: Prism<A0, B0>) => compose(o, i)
+    const withIso = <A0, B0>(o: Prism<S, A0>, i: Iso<A0, B0>) => compose(o, i)
+    return inner._tag === 'lens'
+      ? (withLens(outer, inner) as Prism<S, B>)
+      : inner._tag === 'prism'
+      ? (withPrism(outer, inner) as Prism<S, B>)
+      : (withIso(outer, inner) as Prism<S, B>)
   }
 
   function of<A>(prism: { get: (s: S) => A | undefined; set: (a: A) => (s: S) => S }): Prism<S, A>
@@ -248,3 +373,4 @@ const createPrism = <S>() => {
 
 export const Lens = createLens
 export const Prism = createPrism
+export const Iso = makeIso
