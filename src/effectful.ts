@@ -1,4 +1,4 @@
-import { Data, Exit } from 'effect'
+import { Data, Either } from 'effect'
 import type { Iso as BaseIso, Lens as BaseLens, Prism as BasePrism } from './index'
 import { Iso as makeBaseIso, Lens as BaseLensFactory, Prism as BasePrismFactory } from './index'
 
@@ -15,20 +15,20 @@ export class EffectPrismNoOpSet extends Data.TaggedError('EffectPrismNoOpSet')<{
 // Effectful optic types
 export type EffectLens<S, A> = {
   _tag: 'effect/lens'
-  get: (s: S) => Exit.Exit<A, never>
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => Exit.Exit<T, never>
+  get: (s: S) => Either.Either<A, never>
+  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => Either.Either<T, never>
 }
 
 export type EffectPrism<S, A> = {
   _tag: 'effect/prism'
-  get: (s: S) => Exit.Exit<A, EffectPrismNotFound>
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => Exit.Exit<T, EffectPrismNoOpSet>
+  get: (s: S) => Either.Either<A, EffectPrismNotFound>
+  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => Either.Either<T, EffectPrismNoOpSet>
 }
 
 export type EffectIso<S, A> = {
   _tag: 'effect/iso'
-  to: (s: S) => Exit.Exit<A, never>
-  from: (a: A) => Exit.Exit<S, never>
+  to: (s: S) => Either.Either<A, never>
+  from: (a: A) => Either.Either<S, never>
 }
 
 // Internal wrappers to retain base optics for composition
@@ -39,8 +39,8 @@ type WrappedEffectIso<S, A> = EffectIso<S, A> & { __base: BaseIso<S, A> }
 const wrapLens = <S, A>(base: BaseLens<S, A>): WrappedEffectLens<S, A> => ({
   _tag: 'effect/lens',
   __base: base,
-  get: (s) => Exit.succeed(base.get(s)),
-  set: (a) => (s) => Exit.succeed(base.set(a)(s)),
+  get: (s) => Either.right(base.get(s)),
+  set: (a) => (s) => Either.right(base.set(a)(s)),
 })
 
 const wrapPrism = <S, A>(base: BasePrism<S, A>, path?: string): WrappedEffectPrism<S, A> => ({
@@ -49,28 +49,28 @@ const wrapPrism = <S, A>(base: BasePrism<S, A>, path?: string): WrappedEffectPri
   get: (s) => {
     const v = base.get(s)
     if (v === undefined) {
-      if (path === undefined) return Exit.fail(new EffectPrismNotFound({}))
-      return Exit.fail(new EffectPrismNotFound({ path: path as string }))
+      if (path === undefined) return Either.left(new EffectPrismNotFound({}))
+      return Either.left(new EffectPrismNotFound({ path: path as string }))
     }
-    return Exit.succeed(v)
+    return Either.right(v)
   },
   set:
     (a) =>
     <T extends S>(s: T) => {
       const updated = base.set(a)(s)
       if (updated === s) {
-        if (path === undefined) return Exit.fail(new EffectPrismNoOpSet({ reason: 'missing' }))
-        return Exit.fail(new EffectPrismNoOpSet({ reason: 'missing', path: path as string }))
+        if (path === undefined) return Either.left(new EffectPrismNoOpSet({ reason: 'missing' }))
+        return Either.left(new EffectPrismNoOpSet({ reason: 'missing', path: path as string }))
       }
-      return Exit.succeed(updated)
+      return Either.right(updated)
     },
 })
 
 const wrapIso = <S, A>(base: BaseIso<S, A>): WrappedEffectIso<S, A> => ({
   _tag: 'effect/iso',
   __base: base,
-  to: (s) => Exit.succeed(base.to(s)),
-  from: (a) => Exit.succeed(base.from(a)),
+  to: (s) => Either.right(base.to(s)),
+  from: (a) => Either.right(base.from(a)),
 })
 
 // Universal compose for effectful optics (structural, mirrors base compose semantics)

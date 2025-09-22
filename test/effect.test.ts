@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EffectIso, EffectLens, EffectPrism } from '../src'
-import { Exit } from 'effect'
+import { Either } from 'effect'
 
 describe('EffectLens', () => {
   it('get/set succeed', () => {
@@ -9,12 +9,12 @@ describe('EffectLens', () => {
 
     const p: Person = { name: 'John', age: 30 }
     const get = nameL.get(p)
-    expect(Exit.isSuccess(get)).toBe(true)
-    if (Exit.isSuccess(get)) expect(get.value).toBe('John')
+    expect(Either.isRight(get)).toBe(true)
+    if (Either.isRight(get)) expect(get.right).toBe('John')
 
     const set = nameL.set('Jane')(p)
-    expect(Exit.isSuccess(set)).toBe(true)
-    if (Exit.isSuccess(set)) expect(set.value).toEqual({ name: 'Jane', age: 30 })
+    expect(Either.isRight(set)).toBe(true)
+    if (Either.isRight(set)) expect(set.right).toEqual({ name: 'Jane', age: 30 })
   })
 })
 
@@ -22,12 +22,12 @@ describe('EffectIso', () => {
   it('to/from succeed', () => {
     const numStr = EffectIso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
     const to = numStr.to(7)
-    expect(Exit.isSuccess(to)).toBe(true)
-    if (Exit.isSuccess(to)) expect(to.value).toBe('7')
+    expect(Either.isRight(to)).toBe(true)
+    if (Either.isRight(to)) expect(to.right).toBe('7')
 
     const from = numStr.from('10')
-    expect(Exit.isSuccess(from)).toBe(true)
-    if (Exit.isSuccess(from)) expect(from.value).toBe(10)
+    expect(Either.isRight(from)).toBe(true)
+    if (Either.isRight(from)) expect(from.right).toBe(10)
   })
 })
 
@@ -43,19 +43,19 @@ describe('EffectPrism', () => {
 
   it('get success/failure', () => {
     const got1 = addressP.get({ name: 'A', address: { street: '1', city: 'NYC' } })
-    expect(Exit.isSuccess(got1)).toBe(true)
+    expect(Either.isRight(got1)).toBe(true)
 
     const got2 = addressP.get({ name: 'A' })
-    expect(Exit.isFailure(got2)).toBe(true)
+    expect(Either.isLeft(got2)).toBe(true)
   })
 
   it('set success/failure', () => {
     const res1 = addressP.set({ street: '2', city: 'LA' })({ name: 'A' })
-    expect(Exit.isSuccess(res1)).toBe(true)
+    expect(Either.isRight(res1)).toBe(true)
 
     const composed = EffectPrism<Person>().compose(addressP, cityL)
     const res2 = composed.set('LA')({ name: 'A' })
-    expect(Exit.isFailure(res2)).toBe(true)
+    expect(Either.isLeft(res2)).toBe(true)
   })
 })
 
@@ -68,9 +68,9 @@ describe('Effect composition', () => {
     const composed = EffectPrism<Person>().compose(address, city)
 
     const ok = composed.get({ name: 'A', address: { street: '1', city: 'NYC' } })
-    expect(Exit.isSuccess(ok)).toBe(true)
+    expect(Either.isRight(ok)).toBe(true)
     const bad = composed.get({ name: 'A' })
-    expect(Exit.isFailure(bad)).toBe(true)
+    expect(Either.isLeft(bad)).toBe(true)
   })
 })
 

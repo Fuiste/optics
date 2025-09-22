@@ -1,4 +1,4 @@
-import { Effect, Exit } from 'effect'
+import { Either } from 'effect'
 import { pipe } from 'effect/Function'
 import { EffectIso, EffectLens, EffectPrism } from './effectful'
 
@@ -23,30 +23,31 @@ const numberString = EffectIso<number, string>({ to: (n) => `${n}`, from: (s) =>
 const cityP = EffectPrism<Person>().compose(addressP, cityL)
 
 // 1) Use inside Effect.gen (generator)
-export const programGen = Effect.gen(function* (_) {
-  const currentName = yield* _(nameL.get(person))
-  const uppercased = currentName.toUpperCase()
-  const updated = yield* _(nameL.set(uppercased)(person))
-  return updated
-})
-
-// 2) Use with pipe and Exit combinators
-export const cityUpperExit = pipe(
-  cityP.get(person),
-  Exit.map((c) => c.toUpperCase()),
+export const programDo = pipe(
+  Either.Do,
+  Either.bind('currentName', () => nameL.get(person)),
+  Either.let('uppercased', ({ currentName }) => currentName.toUpperCase()),
+  Either.bind('updated', ({ uppercased }) => nameL.set(uppercased)(person)),
 )
 
-// 3) Integrate with the Effect stdlib (map/flatMap/zip)
-export const nameLenExit = Exit.map(nameL.get(person), (n) => n.length)
+// 2) Use with pipe and Exit combinators
+export const cityUpperEither = pipe(cityP.get(person), Either.map((c) => c.toUpperCase()))
 
-export const zippedExit = Exit.zip(nameL.get(person), Exit.map(ageL.get(person), (a) => a + 1))
+// 3) Integrate with the Effect stdlib (map/flatMap/zip)
+export const nameLenEither = Either.map(nameL.get(person), (n) => n.length)
+
+export const zippedEither = Either.zipWith(
+  nameL.get(person),
+  Either.map(ageL.get(person), (a) => a + 1),
+  (name, ageP1) => ({ name, ageP1 }),
+)
 
 // 4) Composition with Iso (Lens ∘ Iso)
 const ageAsStringL = EffectLens<Person>().compose(ageL, numberString)
-export const ageStringExit = ageAsStringL.get(person)
-export const updatedAgeExit = ageAsStringL.set('31')(person)
+export const ageStringEither = ageAsStringL.get(person)
+export const updatedAgeEither = ageAsStringL.set('31')(person)
 
 // 5) Use prism set in a pipeline; failure when branch missing
-export const setCityToLAExit = pipe(person, (p) => cityP.set('Los Angeles')(p))
+export const setCityToLAEither = pipe(person, (p) => cityP.set('Los Angeles')(p))
 
 
