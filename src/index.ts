@@ -363,4 +363,3 @@ export const Lens = createLens
 export const Prism = createPrism
 export const Iso = makeIso
 
-export * from './effectful'
