@@ -2,6 +2,22 @@
 
 Type-safe, functional optics for immutable data: lenses for required data, prisms for optional/union data, and isomorphisms for total, invertible mappings.
 
+## Installation
+
+```bash
+# npm
+npm install @fuiste/optics
+
+# pnpm
+pnpm add @fuiste/optics
+
+# yarn
+yarn add @fuiste/optics
+
+# bun
+bun add @fuiste/optics
+```
+
 ## What and why
 
 - **Lens**: Focus on a required field; always gets a value and can set immutably

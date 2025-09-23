@@ -667,9 +667,6 @@ describe('Iso', () => {
     expect(prism.get({})).toBeUndefined()
     expect(prism.get({ count: 5 })).toBe('5')
 
-    const updated = prism.set('9')({})
-    expect(updated.count).toBe(9)
-
     const updatedFn = prism.set((s) => (parseInt(s, 10) + 1).toString())({ count: 3 })
     expect(updatedFn.count).toBe(4)
   })

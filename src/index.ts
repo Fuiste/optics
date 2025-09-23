@@ -47,9 +47,7 @@ export type Iso<S, A> = {
  * type Person = InferLensSource<typeof nameLens> // Person
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferLensSource<L extends Lens<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   L extends Lens<infer S, any> ? S : never
 
 /**
@@ -61,9 +59,7 @@ export type InferLensSource<L extends Lens<any, any>> =
  * type Name = InferLensTarget<typeof nameLens> // string
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferLensTarget<L extends Lens<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   L extends Lens<any, infer A> ? A : never
 
 /**
@@ -75,9 +71,7 @@ export type InferLensTarget<L extends Lens<any, any>> =
  * type Person = InferPrismSource<typeof addressPrism> // Person
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferPrismSource<P extends Prism<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   P extends Prism<infer S, any> ? S : never
 
 /**
@@ -89,25 +83,19 @@ export type InferPrismSource<P extends Prism<any, any>> =
  * type Address = InferPrismTarget<typeof addressPrism> // Address | undefined
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferPrismTarget<P extends Prism<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   P extends Prism<any, infer A> ? A : never
 
 /**
  * Extracts the source type from an iso type
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferIsoSource<I extends Iso<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   I extends Iso<infer S, any> ? S : never
 
 /**
  * Extracts the target type from an iso type
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InferIsoTarget<I extends Iso<any, any>> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   I extends Iso<any, infer A> ? A : never
 
 /**
@@ -374,3 +362,4 @@ const createPrism = <S>() => {
 export const Lens = createLens
 export const Prism = createPrism
 export const Iso = makeIso
+
