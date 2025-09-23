@@ -35,11 +35,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "peerDependencies": {
-    "effect": "^3.0.0"
-  },
+  "peerDependencies": {},
   "devDependencies": {
-    "effect": "^3.0.0",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
