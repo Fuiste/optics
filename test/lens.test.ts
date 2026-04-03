@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { Lens, Prism } from '../src'
+import { Lens, Prism, Traversal, each } from '../src'
 import { Iso } from '../src'
 
 describe('Lens', () => {
@@ -669,5 +669,362 @@ describe('Iso', () => {
 
     const updatedFn = prism.set((s) => (parseInt(s, 10) + 1).toString())({ count: 3 })
     expect(updatedFn.count).toBe(4)
+  })
+})
+
+describe('Traversal', () => {
+  describe('basic each traversal', () => {
+    it('should getAll return all array elements', () => {
+      const arr = [1, 2, 3, 4, 5]
+      const numbersTraversal: Traversal<number[], number> = each()
+
+      expect(numbersTraversal.getAll(arr)).toEqual([1, 2, 3, 4, 5])
+    })
+
+    it('should getAll return empty array for empty input', () => {
+      const arr: string[] = []
+      const stringsTraversal: Traversal<string[], string> = each()
+
+      expect(stringsTraversal.getAll(arr)).toEqual([])
+    })
+
+    it('should modify apply function to all elements', () => {
+      const arr = [1, 2, 3]
+      const numbersTraversal: Traversal<number[], number> = each()
+
+      const modified = numbersTraversal.modify((x) => x * 2)(arr)
+
+      expect(modified).toEqual([2, 4, 6])
+      expect(arr).toEqual([1, 2, 3]) // original unchanged
+    })
+
+    it('should modify work with string transformations', () => {
+      const arr = ['hello', 'world']
+      const stringsTraversal: Traversal<string[], string> = each()
+
+      const modified = stringsTraversal.modify((s) => s.toUpperCase())(arr)
+
+      expect(modified).toEqual(['HELLO', 'WORLD'])
+    })
+  })
+
+  describe('Lens ∘ Traversal composition', () => {
+    it('should getAll elements from nested array property', () => {
+      type Person = { name: string; scores: number[] }
+      const people: Person[] = [
+        { name: 'Alice', scores: [85, 90, 78] },
+        { name: 'Bob', scores: [92, 88] },
+        { name: 'Charlie', scores: [76, 84, 91, 80] },
+      ]
+
+      const allScoresTraversal = Lens<Person[]>()
+        .prop(0)
+        .compose(Lens<Person>().prop('scores'))
+        .compose(each<number>())
+
+      // Get all scores from first person only
+      expect(allScoresTraversal.getAll(people)).toEqual([85, 90, 78])
+    })
+
+    it('should modify all elements in nested array', () => {
+      type Person = { name: string; ages: number[] }
+      const data: Person = {
+        name: 'Alice',
+        ages: [5, 10, 15],
+      }
+
+      const agesTraversal = Lens<Person>().prop('ages').compose(each<number>())
+
+      const modified = agesTraversal.modify((age) => age + 1)(data)
+
+      expect(modified.ages).toEqual([6, 11, 16])
+      expect(data.ages).toEqual([5, 10, 15]) // original unchanged
+    })
+
+    it('should modify with complex transformation', () => {
+      type Student = { id: number; grades: string[] }
+      const student: Student = {
+        id: 1,
+        grades: ['A', 'B+', 'C-', 'A-'],
+      }
+
+      const gradesTraversal = Lens<Student>().prop('grades').compose(each<string>())
+
+      const modified = gradesTraversal.modify((grade) => grade + '+')(student)
+
+      expect(modified.grades).toEqual(['A+', 'B++', 'C-+', 'A-+'])
+    })
+  })
+
+  describe('Traversal ∘ Lens composition', () => {
+    it('should getAll a property from each array element', () => {
+      type Product = { name: string; price: number }
+      const products: Product[] = [
+        { name: 'Laptop', price: 999 },
+        { name: 'Mouse', price: 25 },
+        { name: 'Keyboard', price: 75 },
+      ]
+
+      const pricesTraversal = Traversal<Product[], number>().compose(
+        each<Product>(),
+        Lens<Product>().prop('price'),
+      )
+
+      expect(pricesTraversal.getAll(products)).toEqual([999, 25, 75])
+    })
+
+    it('should modify a property on each array element', () => {
+      type Product = { name: string; price: number }
+      const products: Product[] = [
+        { name: 'Laptop', price: 999 },
+        { name: 'Mouse', price: 25 },
+      ]
+
+      const pricesTraversal = Traversal<Product[], number>().compose(
+        each<Product>(),
+        Lens<Product>().prop('price'),
+      )
+
+      const modified = pricesTraversal.modify((price) => price * 0.9)(products)
+
+      expect(modified[0].price).toBeCloseTo(899.1)
+      expect(modified[1].price).toBeCloseTo(22.5)
+      expect(products[0].price).toBe(999) // original unchanged
+    })
+
+    it('should modify with condition', () => {
+      type Item = { name: string; quantity: number }
+      const items: Item[] = [
+        { name: 'Apple', quantity: 5 },
+        { name: 'Banana', quantity: 10 },
+        { name: 'Cherry', quantity: 3 },
+      ]
+
+      const quantitiesTraversal = Traversal<Item[], number>().compose(
+        each<Item>(),
+        Lens<Item>().prop('quantity'),
+      )
+
+      const modified = quantitiesTraversal.modify((q) => (q > 5 ? q * 2 : q))(items)
+
+      expect(modified[0].quantity).toBe(5)
+      expect(modified[1].quantity).toBe(20)
+      expect(modified[2].quantity).toBe(3)
+    })
+  })
+
+  describe('Traversal ∘ Traversal composition', () => {
+    it('should getAll elements from nested arrays', () => {
+      type Matrix = number[][]
+      const matrix: Matrix = [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+      ]
+
+      const allNumbersTraversal = Traversal<Matrix, number>().compose(
+        each<number[]>(),
+        each<number>(),
+      )
+
+      expect(allNumbersTraversal.getAll(matrix)).toEqual([1, 2, 3, 4, 5, 6])
+    })
+
+    it('should modify all elements in nested arrays', () => {
+      type Matrix = string[][]
+      const matrix: Matrix = [
+        ['a', 'b'],
+        ['c', 'd'],
+      ]
+
+      const allStringsTraversal = Traversal<Matrix, string>().compose(
+        each<string[]>(),
+        each<string>(),
+      )
+
+      const modified = allStringsTraversal.modify((s) => s.toUpperCase())(matrix)
+
+      expect(modified).toEqual([
+        ['A', 'B'],
+        ['C', 'D'],
+      ])
+    })
+  })
+
+  describe('Traversing through union types with prism', () => {
+    it('should getAll only from matching elements in union type array', () => {
+      type Circle = { type: 'circle'; radius: number }
+      type Square = { type: 'square'; side: number }
+      type Shape = Circle | Square
+
+      const shapes: Shape[] = [
+        { type: 'circle', radius: 5 },
+        { type: 'square', side: 10 },
+        { type: 'circle', radius: 7 },
+      ]
+
+      // Get all radii from circles only in the array
+      const circlePrism = Prism<Shape>().of({
+        get: (shape): Circle | undefined => (shape.type === 'circle' ? shape : undefined),
+        set: (circle) => (_) => circle,
+      })
+
+      // Chain traversals: each Shape → filter to Circle → extract radius
+      const radiiTraversal = each<Shape>()
+        .compose(circlePrism)
+        .compose(Lens<Circle>().prop('radius'))
+
+      expect(radiiTraversal.getAll(shapes)).toEqual([5, 7]) // Only circles
+    })
+
+    it('should modify only matching elements in union type array', () => {
+      type Circle = { type: 'circle'; radius: number }
+      type Square = { type: 'square'; side: number }
+      type Shape = Circle | Square
+
+      const shapes: Shape[] = [
+        { type: 'circle', radius: 5 },
+        { type: 'square', side: 10 },
+        { type: 'circle', radius: 7 },
+      ]
+
+      // Get all radii from circles only in the array
+      const circlePrism = Prism<Shape>().of({
+        get: (shape): Circle | undefined => (shape.type === 'circle' ? shape : undefined),
+        set: (circle) => (_) => circle,
+      })
+
+      // Chain traversals: each Shape → filter to Circle → extract radius
+      const radiiTraversal = each<Shape>()
+        .compose(circlePrism)
+        .compose(Lens<Circle>().prop('radius'))
+
+      const modified = radiiTraversal.modify((r) => r * 2)(shapes)
+
+      expect(modified[0]).toEqual({ type: 'circle', radius: 10 }) // Doubled
+      expect(modified[1]).toEqual({ type: 'square', side: 10 }) // Unchanged
+      expect(modified[2]).toEqual({ type: 'circle', radius: 14 }) // Doubled
+    })
+  })
+
+  describe('Iso with traversal', () => {
+    it('should getAll with transformation applied', () => {
+      type Data = { values: number[] }
+      const data: Data = { values: [1, 2, 3] }
+
+      const numToStr = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+
+      // Chain: each number → transform to string via iso
+      const strTraversal = Lens<Data>().prop('values').compose(each<number>()).compose(numToStr)
+
+      expect(strTraversal.getAll(data)).toEqual(['1', '2', '3'])
+    })
+  })
+
+  describe('Traversal ∘ Prism composition', () => {
+    it('should getAll only defined values from array of objects with optional property', () => {
+      type Item = { name: string; value?: number }
+      const items: Item[] = [
+        { name: 'A', value: 1 },
+        { name: 'B' }, // no value
+        { name: 'C', value: 3 },
+      ]
+
+      const valuePrism = Prism<Item>().of({
+        get: (item) => item.value,
+        set: (value) => (item) => ({ ...item, value }),
+      })
+
+      const valuesTraversal = Traversal<Item[], number>().compose(each<Item>(), valuePrism)
+
+      expect(valuesTraversal.getAll(items)).toEqual([1, 3]) // Only defined values
+    })
+  })
+
+  describe('real-world scenarios', () => {
+    it('should update all user names in organization hierarchy', () => {
+      type User = { id: number; name: string }
+      type Team = { name: string; members: User[] }
+      type Organization = { name: string; teams: Team[] }
+
+      const org: Organization = {
+        name: 'Acme Corp',
+        teams: [
+          {
+            name: 'Engineering',
+            members: [
+              { id: 1, name: 'Alice' },
+              { id: 2, name: 'Bob' },
+            ],
+          },
+          { name: 'Sales', members: [{ id: 3, name: 'Charlie' }] },
+        ],
+      }
+
+      // Update all user names to uppercase using method chaining
+      const namesTraversal = Lens<Organization>()
+        .prop('teams')
+        .compose(each<Team>())
+        .compose(Lens<Team>().prop('members'))
+        .compose(each<User>())
+        .compose(Lens<User>().prop('name'))
+
+      const modified = namesTraversal.modify((name) => name.toUpperCase())(org)
+
+      expect(modified.teams[0].members[0].name).toBe('ALICE')
+      expect(modified.teams[0].members[1].name).toBe('BOB')
+      expect(modified.teams[1].members[0].name).toBe('CHARLIE')
+    })
+
+    it('should increment all product prices by percentage', () => {
+      type Product = { id: number; price: number }
+      type Category = { name: string; products: Product[] }
+      type Store = { name: string; categories: Category[] }
+
+      const store: Store = {
+        name: 'Store A',
+        categories: [
+          {
+            name: 'Electronics',
+            products: [
+              { id: 1, price: 100 },
+              { id: 2, price: 200 },
+            ],
+          },
+          { name: 'Books', products: [{ id: 3, price: 25 }] },
+        ],
+      }
+
+      // Increase all prices by 10% using method chaining
+      const pricesTraversal = Lens<Store>()
+        .prop('categories')
+        .compose(each<Category>())
+        .compose(Lens<Category>().prop('products'))
+        .compose(each<Product>())
+        .compose(Lens<Product>().prop('price'))
+
+      const modified = pricesTraversal.modify((p) => p * 1.1)(store)
+
+      expect(modified.categories[0].products[0].price).toBeCloseTo(110)
+      expect(modified.categories[0].products[1].price).toBeCloseTo(220)
+      expect(modified.categories[1].products[0].price).toBeCloseTo(27.5)
+    })
+  })
+
+  describe('type inference', () => {
+    /**
+     * Testing that we maintain type safety. This test doesn't run, it exists
+     * to assert that types are correctly inferred.
+     */
+    it.skip('should have correct type inference for each<A>()', () => {
+      const numbersTraversal: Traversal<number[], number> = each()
+      const stringsTraversal: Traversal<string[], string> = each()
+
+      // Should work with getAll returning ReadonlyArray<A>
+      const nums: ReadonlyArray<number> = each().getAll([1, 2, 3])
+
+      // Should work with modify taking (a: A) => A
+      const modified = each().modify((x: number) => x + 1)([1, 2, 3])
+    })
   })
 })
