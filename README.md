@@ -1,6 +1,15 @@
-# Optics (Lens, Prism, Iso)
+# Optics
 
-Type-safe, functional optics for immutable data: lenses for required data, prisms for optional/union data, and isomorphisms for total, invertible mappings.
+Type-safe, functional optics for immutable data in TypeScript.
+
+- **Lens** — total focus on a required value
+- **Prism** — partial focus on an optional or union value
+- **Iso** — total, invertible mapping between two types
+- **Traversal** — focus on zero or more values (e.g. all elements of an array)
+- **Getter** — read-only total focus (computed/derived values)
+- **Fold** — read-only multi-focus (extract without modify)
+
+All optics compose freely via a standalone `compose` function. Three ergonomic combinators — `guard`, `at`, and `each` — cover the most common construction patterns.
 
 ## Installation
 
@@ -17,30 +26,6 @@ yarn add @fuiste/optics
 # bun
 bun add @fuiste/optics
 ```
-
-## What and why
-
-- **Lens**: Focus on a required field; always gets a value and can set immutably
-- **Prism**: Focus on an optional or union branch; get may return undefined
-- **Iso**: Total, invertible mapping between two types `(to, from)`
-- **Composition**: You can compose any combination of lens, prism, and iso
-  - Lens ∘ Lens => Lens
-  - Lens ∘ Prism => Prism
-  - Lens ∘ Iso => Lens
-  - Prism ∘ Lens => Prism
-  - Prism ∘ Prism => Prism
-  - Prism ∘ Iso => Prism
-  - Iso ∘ Lens => Lens
-  - Iso ∘ Prism => Prism
-  - Iso ∘ Iso => Iso
-
-Core principles:
-
-- Pure and immutable: `set` returns a new object; originals are never mutated
-- Type-safe: illegal paths/types are rejected at compile time
-- Ergonomic: `set` accepts either a value or an updater function `(a) => a` for both Lens and Prism
-
----
 
 ## Quick start
 
@@ -61,8 +46,6 @@ const person: Person = { name: 'John', age: 30, address: { street: '123', city: 
 
 nameLens.get(person) // 'John'
 nameLens.set('Jane')(person) // { name: 'Jane', age: 30, address: { ... } }
-
-// Functional updates without intermediate variables
 nameLens.set((name) => name.toUpperCase())(person) // name == 'JOHN'
 ```
 
@@ -85,7 +68,7 @@ addressPrism.get({ name: 'A' }) // undefined
 addressPrism.set({ street: '456', city: 'LA' })({ name: 'A' })
 // => { name: 'A', address: { street: '456', city: 'LA' } }
 
-// Functional updater works the same as Lens
+// Functional updater — no-op when absent
 addressPrism.set((addr) => ({ ...addr, city: 'LA' }))({
   name: 'A',
   address: { street: '1', city: 'NYC' },
@@ -93,10 +76,86 @@ addressPrism.set((addr) => ({ ...addr, city: 'LA' }))({
 // => { name: 'A', address: { street: '1', city: 'LA' } }
 ```
 
-### Composition
+### Iso (invertible mapping)
 
 ```typescript
-import { Lens, Prism, Iso } from '@fuiste/optics'
+import { Iso } from '@fuiste/optics'
+
+const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+
+numberString.to(42) // '42'
+numberString.from('7') // 7
+```
+
+### Traversal (multiple values)
+
+```typescript
+import { Lens, compose, each } from '@fuiste/optics'
+
+type Team = { members: string[] }
+
+const membersLens = Lens<Team>().prop('members')
+const eachMember = each<string>()
+
+const allMembers = compose(membersLens, eachMember)
+
+const team: Team = { members: ['Alice', 'Bob'] }
+
+allMembers.getAll(team) // ['Alice', 'Bob']
+allMembers.modify((n) => n.toUpperCase())(team)
+// => { members: ['ALICE', 'BOB'] }
+```
+
+### Getter (computed read-only value)
+
+```typescript
+import { Lens, Getter, compose } from '@fuiste/optics'
+
+type Person = { firstName: string; lastName: string }
+type Team = { lead: Person }
+
+const fullName = Getter<Person, string>((p) => `${p.firstName} ${p.lastName}`)
+const leadLens = Lens<Team>().prop('lead')
+
+const leadName = compose(leadLens, fullName)
+leadName.get({ lead: { firstName: 'Alice', lastName: 'Smith' } }) // 'Alice Smith'
+// leadName has no `set` — it's read-only
+```
+
+### Fold (read-only extraction of many values)
+
+```typescript
+import { Fold } from '@fuiste/optics'
+
+const words = Fold<string, string>((s) => s.split(' '))
+words.getAll('hello world') // ['hello', 'world']
+```
+
+---
+
+## Composition
+
+All optics compose via the standalone `compose(outer, inner)` function. The return type is determined automatically:
+
+| outer ∖ inner | **Lens** | **Prism** | **Iso** | **Traversal** | **Getter** | **Fold** |
+| ------------- | -------- | --------- | ------- | ------------- | ---------- | -------- |
+| **Lens**      | Lens     | Prism     | Lens    | Traversal     | Getter     | Fold     |
+| **Prism**     | Prism    | Prism     | Prism   | Traversal     | Fold       | Fold     |
+| **Iso**       | Lens     | Prism     | Iso     | Traversal     | Getter     | Fold     |
+| **Traversal** | Traversal| Traversal | Traversal| Traversal    | Fold       | Fold     |
+| **Getter**    | Getter   | Fold      | Getter  | Fold          | Getter     | Fold     |
+| **Fold**      | Fold     | Fold      | Fold    | Fold          | Fold       | Fold     |
+
+**Rules of thumb:**
+
+- Anything with **Fold** → Fold (read-only is contagious)
+- **Getter** + partial optic → Fold; **Getter** + total optic → Getter
+- **Traversal** absorbs other writable optics → Traversal
+- **Iso** is transparent: the other optic's kind wins
+- **Lens ∘ Lens** → Lens; everything else with Prism → Prism
+
+```typescript
+import { Lens, Prism, Iso, compose } from '@fuiste/optics'
 
 type Address = { street: string; city: string }
 type Person = { name: string; address?: Address }
@@ -105,338 +164,202 @@ const addressPrism = Prism<Person>().of({
   get: (p) => p.address,
   set: (address) => (p) => ({ ...p, address }),
 })
-
 const cityLens = Lens<Address>().prop('city')
 
 // Prism ∘ Lens => Prism
-const cityPrism = Prism<Person>().compose(addressPrism, cityLens)
+const cityPrism = compose(addressPrism, cityLens)
 cityPrism.get({ name: 'A', address: { street: '1', city: 'NYC' } }) // 'NYC'
 cityPrism.get({ name: 'A' }) // undefined
+cityPrism.set('LA')({ name: 'A' }) // unchanged (missing path is a no-op)
 
-// Setting through a missing path is a no-op for composed prisms
-const updated = cityPrism.set('LA')({ name: 'A' }) // unchanged when address is undefined
-
-// Function updaters also work
-cityPrism.set((city) => city.toUpperCase())({ name: 'A', address: { street: '1', city: 'nyc' } })
-// => city becomes 'NYC'
-
-// Lens ∘ Iso => Lens (representing as string)
-const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+// Lens ∘ Iso => Lens
 type Model = { count: number }
 const countLens = Lens<Model>().prop('count')
-const countAsString = Lens<Model>().compose(countLens, numberString)
+const numberString = Iso<number, string>({ to: (n) => `${n}`, from: (s) => parseInt(s, 10) })
+const countAsString = compose(countLens, numberString)
 countAsString.get({ count: 7 }) // '7'
 countAsString.set('10')({ count: 7 }) // { count: 10 }
-
-// Prism ∘ Iso => Prism (materializes on concrete values)
-type MaybeCount = { count?: number }
-const countPrism = Prism<MaybeCount>().of({
-  get: (m) => m.count,
-  set: (count) => (m) => ({ ...m, count }),
-})
-const countAsStringPrism = Prism<MaybeCount>().compose(countPrism, numberString)
-countAsStringPrism.get({}) // undefined
-countAsStringPrism.set('9')({}) // { count: 9 } // concrete values materialize
 ```
 
-### Arrays
+### Multi-step chains
+
+Compose can be nested for deep paths:
 
 ```typescript
-type Company = { name: string; employees: Array<{ name: string; role: string }> }
+import { Lens, compose, each } from '@fuiste/optics'
+
+type Company = { employees: Array<{ name: string; role: string }> }
+
 const employeesLens = Lens<Company>().prop('employees')
-const firstEmployeeLens = Lens<Company>().compose(
-  employeesLens,
-  Lens<Company['employees']>().prop(0),
-)
+const eachEmployee = each<{ name: string; role: string }>()
+const empName = Lens<{ name: string; role: string }>().prop('name')
 
-const company: Company = {
-  name: 'Acme',
-  employees: [
-    { name: 'John', role: 'Developer' },
-    { name: 'Jane', role: 'Manager' },
-  ],
-}
+const allEmployeeNames = compose(compose(employeesLens, eachEmployee), empName)
 
-firstEmployeeLens.get(company) // { name: 'John', role: 'Developer' }
-firstEmployeeLens.set({ name: 'Bob', role: 'Designer' })(company)
-// => updates index 0 immutably
-```
-
-### Union types with prisms
-
-```typescript
-type Circle = { type: 'circle'; radius: number }
-type Square = { type: 'square'; side: number }
-type Shape = Circle | Square
-
-const circlePrism = Prism<Shape>().of({
-  get: (s): Circle | undefined => (s.type === 'circle' ? s : undefined),
-  set: (circle) => (_) => circle,
-})
-
-const radiusLens = Lens<Circle>().prop('radius')
-const circleRadius = Prism<Shape>().compose(circlePrism, radiusLens)
-
-circleRadius.get({ type: 'circle', radius: 5 }) // 5
-circleRadius.set(7)({ type: 'circle', radius: 5 }) // { type: 'circle', radius: 7 }
-
-// Function updater on composed prism
-circleRadius.set((r) => r + 1)({ type: 'circle', radius: 6 }) // { type: 'circle', radius: 7 }
-```
-
-### Practical: deeply optional configuration
-
-```typescript
-type Configuration = {
-  search?: {
-    options?: { isPrefillEnabled?: boolean }
-  }
-}
-
-const searchPrism = Prism<Configuration>().of({
-  get: (c) => c.search,
-  set: (search) => (c) => ({ ...c, search }),
-})
-
-const optionsPrism = Prism<NonNullable<Configuration['search']>>().of({
-  get: (s) => s.options,
-  set: (options) => (s) => ({ ...s, options }),
-})
-
-const isPrefillEnabledPrism = Prism<
-  NonNullable<NonNullable<Configuration['search']>['options']>
->().of({
-  get: (o) => o.isPrefillEnabled,
-  set: (isPrefillEnabled) => (o) => ({ ...o, isPrefillEnabled }),
-})
-
-const partialComposed = Prism<Configuration>().compose(searchPrism, optionsPrism)
-
-const composed = Prism<Configuration>().compose(partialComposed, isPrefillEnabledPrism)
-
-composed.get({}) // undefined
-composed.set(true)({}) // unchanged (missing branches)
-
-// Function setter is also a no-op when branches are missing
-composed.set((v) => !v)({}) // unchanged
+allEmployeeNames.getAll(company) // ['Alice', 'Bob', ...]
+allEmployeeNames.modify((n) => n.toUpperCase())(company)
 ```
 
 ---
 
-## Best practices
+## Combinators
 
-- Prefer composition of small optics over writing one big custom getter/setter
-- Use functional setters for derived updates, e.g. `set((a) => f(a))`
-- Treat optics as pure: never mutate inputs inside `set`
-- For arrays, use numeric keys with `prop(index)` and compose
-- For optional/union data, push creation logic into the outermost `Prism#of({ set })` if you want to materialize missing branches. By design, setting through a composed prism where any outer branch is missing is a no-op
-- Use TypeScript helpers like `NonNullable<T>` and `Exclude<T, undefined>` to narrow optional shapes when building intermediate prisms
+### `guard` — type-guard prism
+
+Creates a prism from a TypeScript type guard. Much more ergonomic than manually writing `Prism().of(...)` for discriminated unions.
+
+```typescript
+import { guard, Lens, compose } from '@fuiste/optics'
+
+type Circle = { type: 'circle'; radius: number }
+type Square = { type: 'square'; side: number }
+type Shape = Circle | Square
+
+const circlePrism = guard<Shape, Circle>((s): s is Circle => s.type === 'circle')
+
+circlePrism.get({ type: 'circle', radius: 5 }) // { type: 'circle', radius: 5 }
+circlePrism.get({ type: 'square', side: 4 }) // undefined
+
+// Compose with a lens
+const circleRadius = compose(circlePrism, Lens<Circle>().prop('radius'))
+circleRadius.get({ type: 'circle', radius: 5 }) // 5
+circleRadius.set(10)({ type: 'circle', radius: 5 }) // { type: 'circle', radius: 10 }
+```
+
+### `at` — record key access
+
+Creates a prism that focuses on a key in a `Record<string, V>`. Returns `undefined` when the key is absent; sets/upserts when called.
+
+```typescript
+import { at, Lens, compose } from '@fuiste/optics'
+
+type Config = { headers: Record<string, string> }
+
+const headersLens = Lens<Config>().prop('headers')
+const authHeader = at<string>('Authorization')
+
+const configAuth = compose(headersLens, authHeader)
+
+configAuth.get({ headers: { Authorization: 'Bearer x' } }) // 'Bearer x'
+configAuth.get({ headers: {} }) // undefined
+configAuth.set('Bearer y')({ headers: {} })
+// => { headers: { Authorization: 'Bearer y' } }
+```
+
+### `each` — array traversal
+
+Creates a traversal over all elements of a `ReadonlyArray<A>`.
+
+```typescript
+import { each, compose, Lens } from '@fuiste/optics'
+
+const nums = each<number>()
+nums.getAll([1, 2, 3]) // [1, 2, 3]
+nums.modify((n) => n * 2)([1, 2, 3]) // [2, 4, 6]
+```
 
 ---
 
 ## API reference
 
-### Factories
+### Types
 
 ```typescript
-// Lens factory for a source type S
-Lens<S>()
-  .prop<K extends keyof S>(key: K): Lens<S, S[K]>
-  .compose<A, B>(outer: Lens<S, A>, inner: Lens<A, B> | Prism<A, B> | Iso<A, B>): Lens<S, B> | Prism<S, B>
-
-// Prism factory for a source type S
-Prism<S>()
-  .of<A>({ get: (s: S) => A | undefined; set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T }): Prism<S, A>
-  .compose<A, B>(outer: Prism<S, A>, inner: Lens<A, B> | Prism<A, B> | Iso<A, B>): Prism<S, B>
-
-// Iso constructor
-Iso<S, A>({ to: (s: S) => A, from: (a: A) => S }): Iso<S, A>
-```
-
-### Interfaces
-
-```typescript
-// A functional lens focusing a required value A inside source S
-export type Lens<S, A> = {
+type Lens<S, A> = {
   _tag: 'lens'
   get: (s: S) => A
-  // Accepts either a value or an updater function
   set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
 }
 
-// A functional prism focusing an optional/union value A inside source S
-export type Prism<S, A> = {
+type Prism<S, A> = {
   _tag: 'prism'
   get: (s: S) => A | undefined
   set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
 }
 
-// A total, invertible mapping between S and A
-export type Iso<S, A> = {
+type Iso<S, A> = {
   _tag: 'iso'
   to: (s: S) => A
   from: (a: A) => S
 }
+
+type Traversal<S, A> = {
+  _tag: 'traversal'
+  getAll: (s: S) => ReadonlyArray<A>
+  modify: (f: (a: A) => A) => <T extends S>(s: T) => T
+}
+
+type Getter<S, A> = {
+  _tag: 'getter'
+  get: (s: S) => A
+}
+
+type Fold<S, A> = {
+  _tag: 'fold'
+  getAll: (s: S) => ReadonlyArray<A>
+}
+
+type Optic<S, A> = Lens<S, A> | Prism<S, A> | Iso<S, A> | Traversal<S, A> | Getter<S, A> | Fold<S, A>
 ```
 
-Notes:
+### Factories
 
-- `Lens#set` and `Prism#set` both accept a value or function and return a new object of the same structural type as the input. Unchanged branches are preserved
-- `Prism#get` may return `undefined`. When using composed prisms, any missing outer branch results in `undefined`
-- `Prism#set` on a composed path that is currently missing is a no-op by default. If you want to create missing branches, do it in the outer prism’s `set`. An exception is when composing with `Iso`: providing a concrete value will be materialized via the outer `Prism#set`, while providing a function remains a no-op if missing
+```typescript
+// Lens factory — use .prop to focus on a property key
+Lens<S>().prop<K extends keyof S>(key: K): Lens<S, S[K]>
+
+// Prism factory — use .of to build from get/set
+Prism<S>().of<A>({ get, set }): Prism<S, A>
+
+// Direct constructors
+Iso<S, A>({ to, from }): Iso<S, A>
+Traversal<S, A>({ getAll, modify }): Traversal<S, A>
+Getter<S, A>(get: (s: S) => A): Getter<S, A>
+Fold<S, A>(getAll: (s: S) => ReadonlyArray<A>): Fold<S, A>
+```
+
+### Standalone functions
+
+```typescript
+// Universal composition — 36 overloads, result type inferred from inputs
+compose<S, A, B>(outer: Optic<S, A>, inner: Optic<A, B>): Optic<S, B>
+
+// Type-guard prism
+guard<S, A extends S>(predicate: (s: S) => s is A): Prism<S, A>
+
+// Record key prism
+at<V>(key: string): Prism<Record<string, V>, V>
+
+// Array element traversal
+each<A>(): Traversal<ReadonlyArray<A>, A>
+```
 
 ### Utility types
 
 ```typescript
-// Extract source/target types from optics
-InferLensSource<L extends Lens<any, any>>
-InferLensTarget<L extends Lens<any, any>>
-InferPrismSource<P extends Prism<any, any>>
-InferPrismTarget<P extends Prism<any, any>>
-InferIsoSource<I extends Iso<any, any>>
-InferIsoTarget<I extends Iso<any, any>>
-```
-
-Examples:
-
-```typescript
-const nameLens = Lens<Person>().prop('name')
-type PersonFromLens = InferLensSource<typeof nameLens> // Person
-type Name = InferLensTarget<typeof nameLens> // string
-
-const addressPrism = Prism<Person>().of({
-  get: (p) => p.address,
-  set: (a) => (p) => ({ ...p, address: a }),
-})
-type PersonFromPrism = InferPrismSource<typeof addressPrism> // Person
-type Address = InferPrismTarget<typeof addressPrism> // { street: string; city: string }
+InferSource<O extends Optic>  // Extract the S from any optic
+InferTarget<O extends Optic>  // Extract the A from any optic
 ```
 
 ---
 
-## Examples from the test suite
+## Behaviour notes
 
-### Composed lenses (deep required updates)
-
-```typescript
-type Address = { street: string; city: string }
-type Person = { name: string; address: Address }
-
-const addressLens = Lens<Person>().prop('address')
-const cityLens = Lens<Address>().prop('city')
-const personCityLens = Lens<Person>().compose(addressLens, cityLens)
-
-personCityLens.get({ name: 'John', address: { street: '123 Main', city: 'New York' } }) // 'New York'
-personCityLens.set('Los Angeles')({
-  name: 'John',
-  address: { street: '123 Main', city: 'New York' },
-})
-// => updates city immutably
-```
-
-### Prism ∘ Lens (optional then required)
-
-```typescript
-type Address = { street: string; city: string }
-type Person = { name: string; age: number; address?: Address }
-
-const addressPrism = Prism<Person>().of({
-  get: (p) => p.address,
-  set: (address) => (p) => ({ ...p, address }),
-})
-const cityLens = Lens<Address>().prop('city')
-const composed = Prism<Person>().compose(addressPrism, cityLens)
-
-composed.get({ name: 'John', age: 30, address: { street: '123', city: 'New York' } }) // 'New York'
-composed.set('Los Angeles')({ name: 'John', age: 30, address: { street: '123', city: 'New York' } })
-// => address.city becomes 'Los Angeles'
-
-// Function form
-composed.set((city) => city.toUpperCase())({
-  name: 'John',
-  age: 30,
-  address: { street: '123', city: 'nyc' },
-})
-// => address.city becomes 'NYC'
-```
-
-### Lens ∘ Prism (required then optional)
-
-```typescript
-type Address = { street: string; city: string }
-type Person = { name: string; age: number; address: Address }
-
-const addressLens = Lens<Person>().prop('address')
-const cityPrism = Prism<Address>().of({
-  get: (a) => a.city,
-  set: (city) => (a) => ({ ...a, city }),
-})
-
-const composed = Lens<Person>().compose(addressLens, cityPrism)
-composed.get({ name: 'John', age: 30, address: { street: '123', city: 'New York' } }) // 'New York'
-```
-
-### Prism ∘ Prism (deeply optional)
-
-```typescript
-type Address = { street: string; city: string }
-type Person = { name: string; age: number; address?: Address }
-
-const addressPrism = Prism<Person>().of({
-  get: (p) => p.address,
-  set: (a) => (p) => ({ ...p, address: a }),
-})
-const cityPrism = Prism<Address>().of({
-  get: (a) => a.city,
-  set: (city) => (a) => ({ ...a, city }),
-})
-
-const composed = Prism<Person>().compose(addressPrism, cityPrism)
-composed.get({ name: 'John', age: 30, address: { street: '123', city: 'New York' } }) // 'New York'
-composed.get({ name: 'John', age: 30 }) // undefined
-composed.set('Los Angeles')({ name: 'John', age: 30 }) // unchanged (no address)
-
-// Function setter is also a no-op when a branch is missing
-composed.set((city) => city.toUpperCase())({ name: 'John', age: 30 }) // unchanged
-```
-
-### Complex nested optionals (first department manager)
-
-```typescript
-type Company = {
-  name: string
-  departments?: Array<{
-    name: string
-    manager?: { name: string; email: string }
-  }>
-}
-
-const firstDepartmentPrism = Prism<Company>().of({
-  get: (c) => c.departments?.[0],
-  set: (dept) => (c) => ({
-    ...c,
-    departments: c.departments ? [dept, ...c.departments.slice(1)] : [dept],
-  }),
-})
-
-const managerPrism = Prism<Exclude<Company['departments'], undefined>[number]>().of({
-  get: (dept) => dept.manager,
-  set: (manager) => (dept) => ({ ...dept, manager }),
-})
-
-const composed = Prism<Company>().compose(firstDepartmentPrism, managerPrism)
-composed.get({
-  name: 'Acme',
-  departments: [{ name: 'Eng', manager: { name: 'John', email: 'john@acme.com' } }],
-})
-// => { name: 'John', email: 'john@acme.com' }
-```
+- `Lens#set` and `Prism#set` both accept a value or `(a) => a` updater function and return a new object. Originals are never mutated.
+- `Prism#get` may return `undefined`. In composed prisms, any missing outer branch results in `undefined`.
+- `Prism#set` through a composed path where an outer branch is missing is a **no-op** by default. Function updaters are also no-ops when missing.
+- **Exception — Prism ∘ Iso**: providing a concrete value materializes via the outer Prism's `set` even when `get` returns `undefined`, because the Iso can always construct the intermediate value. Function updaters remain a no-op when missing.
+- `Traversal#modify` applies the function to every focused element. For composed traversals through a missing prism branch, modify is a no-op.
+- `Getter` and `Fold` are read-only — they have no `set` or `modify`. Composing any optic with a read-only optic produces a read-only result.
 
 ---
 
-## Tips and gotchas
+## Best practices
 
-- Composed prisms are safe-by-default: missing outer values mean `get` returns `undefined` and `set` is a no-op
-- If you want `set` to create missing structure, do it at the nearest prism with a `set` that materializes the branch
-- Arrays are first-class: numeric `prop` keys are supported and type-checked
-- Share interfaces across lenses: you can make a `Lens<Interface>()` and use it safely wherever the interface applies
+- Prefer composition of small optics over one big custom getter/setter
+- Use `guard` for discriminated unions instead of manual `Prism().of`
+- Use `each` + `compose` for bulk array operations
+- Use `at` for record/map key access
+- Use `Getter` for derived values that shouldn't be settable
+- Treat optics as pure: never mutate inputs inside `set`
+- For arrays, use `each()` for all elements or `Lens<T[]>().prop(index)` for a specific index

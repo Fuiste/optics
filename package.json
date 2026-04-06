@@ -1,7 +1,7 @@
 {
   "name": "@fuiste/optics",
-  "version": "1.0.0",
-  "description": "Type-safe, functional optics (lenses/prisms) for immutable data",
+  "version": "2.0.0",
+  "description": "Type-safe, functional optics (lenses, prisms, traversals, and more) for immutable data",
   "main": "./dist/index.mjs",
   "scripts": {
     "build": "tsup",
@@ -35,8 +35,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "peerDependencies": {},
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",

@@ -1,0 +1,69 @@
+import type { Prism, Traversal } from './types.js'
+import { makePrism } from './prism.js'
+import { makeTraversal } from './traversal.js'
+
+/**
+ * Creates a prism from a type-guard predicate.
+ * Much more ergonomic than manually writing `Prism().of(...)` for discriminated unions.
+ *
+ * ```ts
+ * type Shape = Circle | Square
+ * const circle = guard<Shape, Circle>((s): s is Circle => s.type === 'circle')
+ * ```
+ */
+export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> =>
+  makePrism<S, A>({
+    get: (s) => (predicate(s) ? s : undefined),
+    set:
+      (a) =>
+      <T extends S>(s: T) => {
+        if (typeof a === 'function') {
+          if (!predicate(s)) return s
+          return (a as (a: A) => A)(s) as unknown as T
+        }
+        return a as unknown as T
+      },
+  })
+
+/**
+ * Creates a prism focusing on a key in a `Record<string, V>`.
+ * `get` returns `undefined` when the key is absent; `set` upserts the key.
+ *
+ * ```ts
+ * const auth = at<string>('Authorization')
+ * auth.get({ Authorization: 'Bearer x' }) // 'Bearer x'
+ * auth.get({})                             // undefined
+ * ```
+ */
+export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
+  makePrism<Readonly<Record<string, V>>, V>({
+    get: (s) => s[key],
+    set:
+      (v) =>
+      <T extends Readonly<Record<string, V>>>(s: T) => {
+        if (typeof v === 'function') {
+          const current = s[key]
+          if (current === undefined) return s
+          return { ...s, [key]: (v as (v: V) => V)(current) } as T
+        }
+        return { ...s, [key]: v } as T
+      },
+  })
+
+/**
+ * Creates a traversal over all elements of a `ReadonlyArray<A>`.
+ *
+ * ```ts
+ * const nums = each<number>()
+ * nums.getAll([1, 2, 3])            // [1, 2, 3]
+ * nums.modify(n => n * 2)([1, 2, 3]) // [2, 4, 6]
+ * ```
+ */
+export const each = <A>(): Traversal<ReadonlyArray<A>, A> =>
+  makeTraversal<ReadonlyArray<A>, A>({
+    getAll: (s) => s,
+    modify:
+      (f) =>
+      <T extends ReadonlyArray<A>>(s: T) =>
+        s.map(f) as unknown as T,
+  })
