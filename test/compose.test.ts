@@ -75,6 +75,11 @@ describe('Lens ∘ Lens => Lens', () => {
     const updated = personCity.set((c) => c.toUpperCase())(person)
     expect(updated.address.city).toBe('NEW YORK')
   })
+
+  it('returns the original reference for unchanged updates', () => {
+    expect(personCity.set('New York')(person)).toBe(person)
+    expect(personCity.set((city) => city)(person)).toBe(person)
+  })
 })
 
 describe('Lens ∘ Iso => Lens', () => {

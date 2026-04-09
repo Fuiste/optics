@@ -1,4 +1,5 @@
 import type { Prism, Traversal } from './types.js'
+import { hasIndex, mapArrayWithIdentity, setArraySlot } from './_internal.js'
 import { makePrism } from './prism.js'
 import { makeTraversal } from './traversal.js'
 
@@ -14,15 +15,15 @@ import { makeTraversal } from './traversal.js'
 export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> =>
   makePrism<S, A>({
     get: (s) => (predicate(s) ? s : undefined),
-    set:
-      (a) =>
-      <T extends S>(s: T) => {
-        if (typeof a === 'function') {
-          if (!predicate(s)) return s
-          return (a as (a: A) => A)(s) as unknown as T
-        }
-        return a as unknown as T
-      },
+    set: (a) => (s) => {
+      if (typeof a === 'function') {
+        if (!predicate(s)) return s
+        const next = (a as (a: A) => A)(s)
+        return Object.is(next, s) ? s : next
+      }
+
+      return Object.is(a, s) ? s : a
+    },
   })
 
 /**
@@ -38,16 +39,38 @@ export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> 
 export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
   makePrism<Readonly<Record<string, V>>, V>({
     get: (s) => s[key],
-    set:
-      (v) =>
-      <T extends Readonly<Record<string, V>>>(s: T) => {
-        if (typeof v === 'function') {
-          const current = s[key]
-          if (current === undefined) return s
-          return { ...s, [key]: (v as (v: V) => V)(current) } as T
-        }
-        return { ...s, [key]: v } as T
-      },
+    set: (v) => (s) => {
+      const current = s[key]
+
+      if (typeof v === 'function') {
+        if (current === undefined) return s
+        const next = (v as (v: V) => V)(current)
+        return Object.is(next, current) ? s : { ...s, [key]: next }
+      }
+
+      if (current !== undefined && Object.is(v, current)) return s
+      return { ...s, [key]: v }
+    },
+  })
+
+/**
+ * Creates a prism focusing on an array element by index.
+ * `get` returns `undefined` when the index is out of bounds; `set` is a no-op when absent.
+ */
+export const index = <A>(idx: number): Prism<ReadonlyArray<A>, A> =>
+  makePrism<ReadonlyArray<A>, A>({
+    get: (items) => (hasIndex(items, idx) ? items[idx] : undefined),
+    set: (valueOrFn) => (items) => {
+      if (!hasIndex(items, idx)) return items
+
+      const current = items[idx]!
+      const next =
+        typeof valueOrFn === 'function'
+          ? (valueOrFn as (value: A) => A)(current)
+          : valueOrFn
+
+      return Object.is(next, current) ? items : setArraySlot(items, idx, next)
+    },
   })
 
 /**
@@ -62,8 +85,5 @@ export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
 export const each = <A>(): Traversal<ReadonlyArray<A>, A> =>
   makeTraversal<ReadonlyArray<A>, A>({
     getAll: (s) => s,
-    modify:
-      (f) =>
-      <T extends ReadonlyArray<A>>(s: T) =>
-        s.map(f) as unknown as T,
+    modify: (f) => (s) => mapArrayWithIdentity(s, f),
   })

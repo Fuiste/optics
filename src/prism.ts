@@ -2,7 +2,7 @@ import type { Prism } from './types.js'
 
 export const makePrism = <S, A>(prism: {
   get: (s: S) => A | undefined
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
+  set: (a: A | ((a: A) => A)) => (s: S) => S
 }): Prism<S, A> => ({
   _tag: 'prism',
   ...prism,
@@ -25,16 +25,17 @@ export const createPrism = <S>() => ({
   }): Prism<S, A> =>
     makePrism<S, A>({
       get: prism.get,
-      set:
-        (a) =>
-        <T extends S>(s: T) => {
-          if (typeof a === 'function') {
-            const current = prism.get(s)
-            if (current === undefined) return s
-            const next = (a as (a: A) => A)(current)
-            return (prism.set as (a: A) => (s: S) => S)(next)(s) as T
-          }
-          return (prism.set as (a: A) => (s: S) => S)(a)(s) as T
-        },
+      set: (a) => (s) => {
+        const current = prism.get(s)
+
+        if (typeof a === 'function') {
+          if (current === undefined) return s
+          const next = (a as (a: A) => A)(current)
+          return Object.is(next, current) ? s : prism.set(next)(s)
+        }
+
+        if (current !== undefined && Object.is(a, current)) return s
+        return prism.set(a)(s)
+      },
     }),
 })

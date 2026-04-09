@@ -36,4 +36,4 @@ export const Fold = makeFold
 export { compose } from './compose.js'
 
 // ── Combinators ───────────────────────────────────────────────────────
-export { guard, at, each } from './combinators.js'
+export { guard, at, each, index } from './combinators.js'

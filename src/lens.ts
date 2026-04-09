@@ -1,9 +1,9 @@
 import type { Lens } from './types.js'
-import { resolve } from './_internal.js'
+import { resolve, setArraySlot } from './_internal.js'
 
 export const makeLens = <S, A>(
   get: (s: S) => A,
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T,
+  set: (a: A | ((a: A) => A)) => (s: S) => S,
 ): Lens<S, A> => ({
   _tag: 'lens',
   get,
@@ -13,8 +13,17 @@ export const makeLens = <S, A>(
 const prop = <S, K extends keyof S>(key: K): Lens<S, S[K]> =>
   makeLens<S, S[K]>(
     (s) => s[key],
-    (a) =>
-      <T extends S>(s: T) => ({ ...s, [key]: resolve(a, s[key]) }) as T,
+    (a) => (s) => {
+      const next = resolve(a, s[key])
+
+      if (Object.is(next, s[key])) return s
+
+      if (Array.isArray(s) && typeof key === 'number') {
+        return setArraySlot(s, key, next) as S
+      }
+
+      return { ...s, [key]: next }
+    },
   )
 
 /**
