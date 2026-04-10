@@ -9,7 +9,7 @@ Type-safe, functional optics for immutable data in TypeScript.
 - **Getter** — read-only total focus (computed/derived values)
 - **Fold** — read-only multi-focus (extract without modify)
 
-All optics compose freely via a standalone `compose` function. Three ergonomic combinators — `guard`, `at`, and `each` — cover the most common construction patterns.
+All optics compose freely via a standalone `compose` function. Four ergonomic combinators — `guard`, `at`, `index`, and `each` — cover the most common construction patterns.
 
 ## Installation
 
@@ -26,6 +26,11 @@ yarn add @fuiste/optics
 # bun
 bun add @fuiste/optics
 ```
+
+## Development
+
+- Package manager: `pnpm`
+- Supported Node.js: `>=20.19.0`
 
 ## Quick start
 
@@ -246,6 +251,21 @@ configAuth.set('Bearer y')({ headers: {} })
 // => { headers: { Authorization: 'Bearer y' } }
 ```
 
+### `index` — array element access
+
+Creates a prism that focuses on a single array element. `get` returns `undefined` when the index is out of bounds, and `set` is a no-op when the element is missing.
+
+```typescript
+import { index } from '@fuiste/optics'
+
+const second = index<number>(1)
+
+second.get([10, 20, 30]) // 20
+second.get([10]) // undefined
+second.set(99)([10, 20, 30]) // [10, 99, 30]
+second.set(99)([10]) // unchanged
+```
+
 ### `each` — array traversal
 
 Creates a traversal over all elements of a `ReadonlyArray<A>`.
@@ -268,13 +288,13 @@ nums.modify((n) => n * 2)([1, 2, 3]) // [2, 4, 6]
 type Lens<S, A> = {
   _tag: 'lens'
   get: (s: S) => A
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
+  set: (a: A | ((a: A) => A)) => (s: S) => S
 }
 
 type Prism<S, A> = {
   _tag: 'prism'
   get: (s: S) => A | undefined
-  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
+  set: (a: A | ((a: A) => A)) => (s: S) => S
 }
 
 type Iso<S, A> = {
@@ -286,7 +306,7 @@ type Iso<S, A> = {
 type Traversal<S, A> = {
   _tag: 'traversal'
   getAll: (s: S) => ReadonlyArray<A>
-  modify: (f: (a: A) => A) => <T extends S>(s: T) => T
+  modify: (f: (a: A) => A) => (s: S) => S
 }
 
 type Getter<S, A> = {
@@ -330,6 +350,9 @@ guard<S, A extends S>(predicate: (s: S) => s is A): Prism<S, A>
 // Record key prism
 at<V>(key: string): Prism<Record<string, V>, V>
 
+// Array index prism
+index<A>(idx: number): Prism<ReadonlyArray<A>, A>
+
 // Array element traversal
 each<A>(): Traversal<ReadonlyArray<A>, A>
 ```
@@ -346,10 +369,12 @@ InferTarget<O extends Optic>  // Extract the A from any optic
 ## Behaviour notes
 
 - `Lens#set` and `Prism#set` both accept a value or `(a) => a` updater function and return a new object. Originals are never mutated.
+- Writable optics preserve the caller's source shape in their public setter signatures for compatibility with narrowed states.
 - `Prism#get` may return `undefined`. In composed prisms, any missing outer branch results in `undefined`.
 - `Prism#set` through a composed path where an outer branch is missing is a **no-op** by default. Function updaters are also no-ops when missing.
 - **Exception — Prism ∘ Iso**: providing a concrete value materializes via the outer Prism's `set` even when `get` returns `undefined`, because the Iso can always construct the intermediate value. Function updaters remain a no-op when missing.
 - `Traversal#modify` applies the function to every focused element. For composed traversals through a missing prism branch, modify is a no-op.
+- Unchanged updates preserve reference identity whenever the library can detect that the focused value did not change.
 - `Getter` and `Fold` are read-only — they have no `set` or `modify`. Composing any optic with a read-only optic produces a read-only result.
 
 ---
@@ -359,7 +384,7 @@ InferTarget<O extends Optic>  // Extract the A from any optic
 - Prefer composition of small optics over one big custom getter/setter
 - Use `guard` for discriminated unions instead of manual `Prism().of`
 - Use `each` + `compose` for bulk array operations
-- Use `at` for record/map key access
+- Use `index()` for a single array element and `at()` for record/map keys
 - Use `Getter` for derived values that shouldn't be settable
 - Treat optics as pure: never mutate inputs inside `set`
-- For arrays, use `each()` for all elements or `Lens<T[]>().prop(index)` for a specific index
+- For arrays, prefer `each()` for all elements or `index(i)` for one element. `Lens<T[]>().prop(index)` remains supported for compatibility.

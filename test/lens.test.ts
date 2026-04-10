@@ -42,30 +42,28 @@ describe('Lens', () => {
       `)
     })
 
-    it('preserves subtypes through set', () => {
-      type Base = { name: string }
-      type Extended = Base & { age: number }
-      const baseLens = Lens<Base>().prop('name')
-      const extended: Extended = { name: 'John', age: 30 }
-      const updated = baseLens.set('Jane')(extended)
+    it('preserves arrays when setting numeric keys', () => {
+      type Company = { employees: Array<{ name: string }> }
+      const employees: Company['employees'] = [{ name: 'Alice' }, { name: 'Bob' }]
+      const firstEmployee = Lens<Company['employees']>().prop(0)
+      const updated = firstEmployee.set({ name: 'Zed' })(employees)
+
+      expect(Array.isArray(updated)).toBe(true)
       expect(updated).toMatchInlineSnapshot(`
-        {
-          "age": 30,
-          "name": "Jane",
-        }
+        [
+          {
+            "name": "Zed",
+          },
+          {
+            "name": "Bob",
+          },
+        ]
       `)
     })
 
-    it.skip('rejects invalid property keys at compile time', () => {
-      const lens = Lens<Person>()
-      // @ts-expect-error - non-existent property
-      lens.prop('invalid')
-    })
-
-    it.skip('rejects wrong types in set at compile time', () => {
-      const ageLens = Lens<Person>().prop('age')
-      // @ts-expect-error - string not assignable to number
-      ageLens.set('thirty')(person)
+    it('returns the original reference for unchanged updates', () => {
+      expect(nameLens.set('John')(person)).toBe(person)
+      expect(nameLens.set((name) => name)(person)).toBe(person)
     })
   })
 

@@ -55,6 +55,11 @@ describe('Prism', () => {
       const updated = addressPrism.set((a) => ({ ...a, city: 'LA' }))(withoutAddress)
       expect(updated).toEqual(withoutAddress)
     })
+
+    it('returns the original reference for unchanged updates', () => {
+      expect(addressPrism.set(withAddress.address!)(withAddress)).toBe(withAddress)
+      expect(addressPrism.set((address) => address)(withAddress)).toBe(withAddress)
+    })
   })
 
   describe('union types', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { guard, at, each } from '../src'
+import { guard, at, each, index } from '../src'
 
 describe('guard', () => {
   type Circle = { type: 'circle'; radius: number }
@@ -23,6 +23,16 @@ describe('guard', () => {
 
   it('sets a concrete value', () => {
     const updated = circlePrism.set({ type: 'circle', radius: 99 })({ type: 'circle', radius: 5 })
+    expect(updated).toMatchInlineSnapshot(`
+      {
+        "radius": 99,
+        "type": "circle",
+      }
+    `)
+  })
+
+  it('can replace a non-matching branch with a matching one', () => {
+    const updated = circlePrism.set({ type: 'circle', radius: 99 })({ type: 'square', side: 4 })
     expect(updated).toMatchInlineSnapshot(`
       {
         "radius": 99,
@@ -122,7 +132,53 @@ describe('each', () => {
     `)
   })
 
+  it('returns the original reference when nothing changes', () => {
+    const values = [1, 2, 3]
+    expect(nums.modify((n) => n)(values)).toBe(values)
+  })
+
   it('is tagged as traversal', () => {
     expect(nums._tag).toBe('traversal')
+  })
+})
+
+describe('index', () => {
+  const second = index<number>(1)
+
+  it('gets a present element', () => {
+    expect(second.get([1, 2, 3])).toBe(2)
+  })
+
+  it('returns undefined when out of bounds', () => {
+    expect(index<number>(5).get([1, 2, 3])).toBeUndefined()
+  })
+
+  it('sets a present element immutably', () => {
+    const values = [1, 2, 3]
+    const updated = second.set(20)(values)
+
+    expect(updated).toMatchInlineSnapshot(`
+      [
+        1,
+        20,
+        3,
+      ]
+    `)
+    expect(updated).not.toBe(values)
+  })
+
+  it('no-ops set when out of bounds', () => {
+    const values = [1, 2, 3]
+    expect(index<number>(5).set(20)(values)).toBe(values)
+  })
+
+  it('returns the original reference for unchanged updates', () => {
+    const values = [1, 2, 3]
+    expect(second.set(2)(values)).toBe(values)
+    expect(second.set((value) => value)(values)).toBe(values)
+  })
+
+  it('is tagged as prism', () => {
+    expect(second._tag).toBe('prism')
   })
 })

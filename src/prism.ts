@@ -28,13 +28,16 @@ export const createPrism = <S>() => ({
       set:
         (a) =>
         <T extends S>(s: T) => {
-          if (typeof a === 'function') {
-            const current = prism.get(s)
-            if (current === undefined) return s
-            const next = (a as (a: A) => A)(current)
-            return (prism.set as (a: A) => (s: S) => S)(next)(s) as T
-          }
-          return (prism.set as (a: A) => (s: S) => S)(a)(s) as T
+        const current = prism.get(s)
+
+        if (typeof a === 'function') {
+          if (current === undefined) return s
+          const next = (a as (a: A) => A)(current)
+          return (Object.is(next, current) ? s : prism.set(next)(s)) as T
+        }
+
+        if (current !== undefined && Object.is(a, current)) return s
+        return prism.set(a)(s) as T
         },
     }),
 })
