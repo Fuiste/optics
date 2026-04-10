@@ -3,7 +3,7 @@ import { resolve, setArraySlot } from './_internal.js'
 
 export const makeLens = <S, A>(
   get: (s: S) => A,
-  set: (a: A | ((a: A) => A)) => (s: S) => S,
+  set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T,
 ): Lens<S, A> => ({
   _tag: 'lens',
   get,
@@ -13,17 +13,18 @@ export const makeLens = <S, A>(
 const prop = <S, K extends keyof S>(key: K): Lens<S, S[K]> =>
   makeLens<S, S[K]>(
     (s) => s[key],
-    (a) => (s) => {
+    (a) =>
+      <T extends S>(s: T) => {
       const next = resolve(a, s[key])
 
       if (Object.is(next, s[key])) return s
 
       if (Array.isArray(s) && typeof key === 'number') {
-        return setArraySlot(s, key, next) as S
+        return setArraySlot(s, key, next) as T
       }
 
-      return { ...s, [key]: next }
-    },
+      return { ...s, [key]: next } as T
+      },
   )
 
 /**

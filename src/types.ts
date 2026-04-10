@@ -5,7 +5,7 @@
 export type Lens<S, A> = {
   readonly _tag: 'lens'
   readonly get: (s: S) => A
-  readonly set: (a: A | ((a: A) => A)) => (s: S) => S
+  readonly set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
 }
 
 /**
@@ -16,7 +16,7 @@ export type Lens<S, A> = {
 export type Prism<S, A> = {
   readonly _tag: 'prism'
   readonly get: (s: S) => A | undefined
-  readonly set: (a: A | ((a: A) => A)) => (s: S) => S
+  readonly set: (a: A | ((a: A) => A)) => <T extends S>(s: T) => T
 }
 
 /**
@@ -36,7 +36,7 @@ export type Iso<S, A> = {
 export type Traversal<S, A> = {
   readonly _tag: 'traversal'
   readonly getAll: (s: S) => ReadonlyArray<A>
-  readonly modify: (f: (a: A) => A) => (s: S) => S
+  readonly modify: (f: (a: A) => A) => <T extends S>(s: T) => T
 }
 
 /**

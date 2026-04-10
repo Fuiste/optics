@@ -152,6 +152,4 @@ type Shape = Circle | Square
 
 const circlePrism = guard<Shape, Circle>((shape): shape is Circle => shape.type === 'circle')
 const updatedShape = circlePrism.set({ type: 'circle', radius: 1 })({ type: 'square', side: 4 })
-
-// @ts-expect-error branch replacement is no longer typed as the original subtype
 updatedShape.side.toFixed()

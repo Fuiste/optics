@@ -12,7 +12,7 @@ import type { Traversal } from './types.js'
  */
 export const makeTraversal = <S, A>(traversal: {
   getAll: (s: S) => ReadonlyArray<A>
-  modify: (f: (a: A) => A) => (s: S) => S
+  modify: (f: (a: A) => A) => <T extends S>(s: T) => T
 }): Traversal<S, A> => ({
   _tag: 'traversal',
   ...traversal,

@@ -15,15 +15,17 @@ import { makeTraversal } from './traversal.js'
 export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> =>
   makePrism<S, A>({
     get: (s) => (predicate(s) ? s : undefined),
-    set: (a) => (s) => {
+    set:
+      (a) =>
+      <T extends S>(s: T) => {
       if (typeof a === 'function') {
         if (!predicate(s)) return s
         const next = (a as (a: A) => A)(s)
-        return Object.is(next, s) ? s : next
+        return (Object.is(next, s) ? s : next) as unknown as T
       }
 
-      return Object.is(a, s) ? s : a
-    },
+      return (Object.is(a, s) ? s : a) as unknown as T
+      },
   })
 
 /**
@@ -39,18 +41,20 @@ export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> 
 export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
   makePrism<Readonly<Record<string, V>>, V>({
     get: (s) => s[key],
-    set: (v) => (s) => {
+    set:
+      (v) =>
+      <T extends Readonly<Record<string, V>>>(s: T) => {
       const current = s[key]
 
       if (typeof v === 'function') {
         if (current === undefined) return s
         const next = (v as (v: V) => V)(current)
-        return Object.is(next, current) ? s : { ...s, [key]: next }
+        return (Object.is(next, current) ? s : { ...s, [key]: next }) as T
       }
 
       if (current !== undefined && Object.is(v, current)) return s
-      return { ...s, [key]: v }
-    },
+      return { ...s, [key]: v } as T
+      },
   })
 
 /**
@@ -60,7 +64,9 @@ export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
 export const index = <A>(idx: number): Prism<ReadonlyArray<A>, A> =>
   makePrism<ReadonlyArray<A>, A>({
     get: (items) => (hasIndex(items, idx) ? items[idx] : undefined),
-    set: (valueOrFn) => (items) => {
+    set:
+      (valueOrFn) =>
+      <T extends ReadonlyArray<A>>(items: T) => {
       if (!hasIndex(items, idx)) return items
 
       const current = items[idx]!
@@ -69,8 +75,8 @@ export const index = <A>(idx: number): Prism<ReadonlyArray<A>, A> =>
           ? (valueOrFn as (value: A) => A)(current)
           : valueOrFn
 
-      return Object.is(next, current) ? items : setArraySlot(items, idx, next)
-    },
+      return (Object.is(next, current) ? items : setArraySlot(items, idx, next)) as T
+      },
   })
 
 /**
@@ -85,5 +91,8 @@ export const index = <A>(idx: number): Prism<ReadonlyArray<A>, A> =>
 export const each = <A>(): Traversal<ReadonlyArray<A>, A> =>
   makeTraversal<ReadonlyArray<A>, A>({
     getAll: (s) => s,
-    modify: (f) => (s) => mapArrayWithIdentity(s, f),
+    modify:
+      (f) =>
+      <T extends ReadonlyArray<A>>(s: T) =>
+        mapArrayWithIdentity(s, f) as T,
   })

@@ -369,7 +369,7 @@ InferTarget<O extends Optic>  // Extract the A from any optic
 ## Behaviour notes
 
 - `Lens#set` and `Prism#set` both accept a value or `(a) => a` updater function and return a new object. Originals are never mutated.
-- Writable optics return the declared source type `S`. They do not promise subtype preservation across updates.
+- Writable optics preserve the caller's source shape in their public setter signatures for compatibility with narrowed states.
 - `Prism#get` may return `undefined`. In composed prisms, any missing outer branch results in `undefined`.
 - `Prism#set` through a composed path where an outer branch is missing is a **no-op** by default. Function updaters are also no-ops when missing.
 - **Exception — Prism ∘ Iso**: providing a concrete value materializes via the outer Prism's `set` even when `get` returns `undefined`, because the Iso can always construct the intermediate value. Function updaters remain a no-op when missing.
