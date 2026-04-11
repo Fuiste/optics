@@ -32,6 +32,12 @@ bun add @fuiste/optics
 - Package manager: `pnpm`
 - Supported Node.js: `>=20.19.0`
 
+## Documentation
+
+- New contributors can start with the project wiki at [docs/index.md](docs/index.md).
+- For hands-on guidance, see the [Getting Started guide](docs/guide/getting-started.md).
+- This TypeScript library is inspired by the Haskell `optics` package on Hackage: https://hackage.haskell.org/package/optics.
+
 ## Quick start
 
 ### Lens (required data)
