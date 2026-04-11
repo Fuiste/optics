@@ -158,6 +158,7 @@ All optics compose via the standalone `compose(outer, inner)` function. The retu
 - **Traversal** absorbs other writable optics → Traversal
 - **Iso** is transparent: the other optic's kind wins
 - **Lens ∘ Lens** → Lens; everything else with Prism → Prism
+- For full edge-case notes (`Prism` no-op, `Prism ∘ Iso` materialization, nested chain behavior), see the dedicated [composition guide](./composition-guide.md).
 
 ```typescript
 import { Lens, Prism, Iso, compose } from '@fuiste/optics'
