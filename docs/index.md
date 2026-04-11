@@ -1,12 +1,22 @@
 # Optics documentation index
 
 ## Purpose
-This is the docs entrypoint for Orienting with Optics quickly. The pages below are intentionally concise and focused on where to go next for usage, concepts, or contribution flow.
+This is the docs entrypoint for getting productive quickly. The pages below are intentionally concise and scoped for first-pass onboarding.
 
 ## Start here
 
 - [Getting Started](guide/getting-started.md) – first pass for setup and basic workflow.
 - [Optics Overview](guide/optics.md) – foundational concepts and terminology.
+- [Composition](guide/composition.md) – combining optics into reusable pipelines.
+- [Combinators](guide/combinators.md) – practical constructors for common cases.
+
+## Required docs for first-pass release
+
+- `docs/index.md` (this file)
+- [Getting Started](guide/getting-started.md)
+- [Optics Overview](guide/optics.md)
+- [Composition](guide/composition.md)
+- [Combinators](guide/combinators.md)
 
 ## Quick links by audience
 

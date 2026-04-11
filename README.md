@@ -36,6 +36,10 @@ bun add @fuiste/optics
 
 - New contributors can start with the project wiki at [docs/index.md](docs/index.md).
 - For hands-on guidance, see the [Getting Started guide](docs/guide/getting-started.md).
+- Explore the full guide set:
+  - [Optics Overview](docs/guide/optics.md)
+  - [Composition](docs/guide/composition.md)
+  - [Combinators](docs/guide/combinators.md)
 - This TypeScript library is inspired by the Haskell `optics` package on Hackage: https://hackage.haskell.org/package/optics.
 
 ## Quick start
