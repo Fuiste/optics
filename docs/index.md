@@ -1,10 +1,26 @@
-# Optics Documentation
+# Optics documentation index
 
-Welcome to Optics. This wiki-style documentation tree holds the canonical getting started and reference guides for contributors and users.
+## Purpose
+This is the docs entrypoint for Orienting with Optics quickly. The pages below are intentionally concise and focused on where to go next for usage, concepts, or contribution flow.
 
-## Topics
+## Start here
 
-- [Getting Started](guide/getting-started.md)
-- [Optics Overview](guide/optics.md)
-- [Composition](guide/composition.md)
-- [Combinators](guide/combinators.md)
+- [Getting Started](guide/getting-started.md) – first pass for setup and basic workflow.
+- [Optics Overview](guide/optics.md) – foundational concepts and terminology.
+
+## Quick links by audience
+
+### For users
+1. Start with [Getting Started](guide/getting-started.md) to set context.
+2. Read [Optics Overview](guide/optics.md) for core ideas.
+3. Use [Combinators](guide/combinators.md) for practical building blocks.
+4. Reference [Composition](guide/composition.md) when combining pieces into larger behaviors.
+
+### For contributors
+1. Review [Getting Started](guide/getting-started.md) for repository layout and conventions.
+2. Follow [Composition](guide/composition.md) for code structure patterns.
+3. Cross-check [Optics Overview](guide/optics.md) to keep terminology and design intent aligned.
+4. Use [Combinators](guide/combinators.md) when documenting or introducing new primitives.
+
+## Navigation intent
+Use this index as your orientation map; the linked guides provide the first-pass explanations, while implementation details belong in the code and API docs.
