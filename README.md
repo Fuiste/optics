@@ -11,6 +11,23 @@ Type-safe, functional optics for immutable data in TypeScript.
 
 All optics compose freely via a standalone `compose` function. Four ergonomic combinators — `guard`, `at`, `index`, and `each` — cover the most common construction patterns.
 
+
+## Documentation
+
+The project documentation lives in-repo under `docs/wiki` (markdown-only). All docs links use relative markdown links.
+
+- [Wiki index](./docs/wiki/index.md)
+- [Getting started](./docs/wiki/intro/getting-started.md#getting-started)
+- [API glossary](./docs/wiki/api/glossary.md#api-glossary)
+- [Composition guide](./docs/wiki/guides/composition.md#composition-guide)
+- [Combinators guide](./docs/wiki/guides/combinators.md#combinators-guide)
+- [Examples gallery](./docs/wiki/examples/gallery.md#examples-gallery)
+- [Installation and setup](./docs/wiki/install/setup.md#installation-and-setup)
+- [Contributing and editing docs](./docs/wiki/contributing/editing-docs.md#contributing-and-editing-docs)
+
+One-line file map for README links: `docs/wiki/index.md`, `docs/wiki/intro/getting-started.md#getting-started`, `docs/wiki/api/glossary.md#api-glossary`, `docs/wiki/guides/composition.md#composition-guide`, `docs/wiki/guides/combinators.md#combinators-guide`, `docs/wiki/examples/gallery.md#examples-gallery`, `docs/wiki/install/setup.md#installation-and-setup`, `docs/wiki/contributing/editing-docs.md#contributing-and-editing-docs`.
+
+
 ## Installation
 
 ```bash
