@@ -32,6 +32,13 @@ bun add @fuiste/optics
 - Package manager: `pnpm`
 - Supported Node.js: `>=20.19.0`
 
+## Docs
+
+- [Quick start guide](./docs/guides.md)
+- [API reference](./docs/api.md)
+
+Attribution: [Hackage package overview](https://hackage.haskell.org/package/optics).
+
 ## Quick start
 
 ### Lens (required data)
