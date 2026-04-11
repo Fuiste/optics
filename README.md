@@ -11,6 +11,8 @@ Type-safe, functional optics for immutable data in TypeScript.
 
 All optics compose freely via a standalone `compose` function. Four ergonomic combinators — `guard`, `at`, `index`, and `each` — cover the most common construction patterns.
 
+Get started at: [Intro and Getting Started](./getting-started.md).
+
 ## Installation
 
 ```bash
