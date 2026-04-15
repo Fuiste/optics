@@ -1,35 +1,173 @@
 # Semantics and laws
 
-The library is designed around immutable updates and observable identity preservation where possible.
-If mutation appears to work, that is merely impurity auditioning for a future bug report.
+The library is built around immutable updates, explicit partiality, and reference preservation when a change can be proven to be no change at all.
+If a mutation-based shortcut feels tempting, that is usually a sign you are trying to smuggle side effects through an optic-shaped hole.
 
-## Lens laws
+## Immutability
 
-The test suite encodes the familiar lens expectations:
+Writable optics return updated structures instead of mutating inputs.
+This is exercised across the tests for `Lens`, `Prism`, `index`, composed optics, and traversals.
 
-- get after set returns the written value
-- set after get restores the original structure
-- successive sets keep only the latest write
+- `Lens#set` returns a new structure when the focus changes.
+- `Prism#set` returns a new structure when the focus exists and changes, or when its concrete setter materializes a branch.
+- `Traversal#modify` returns a new structure when any focused value changes.
+- `Getter` and `Fold` are read-only by construction; they expose no `set` or `modify`.
 
-## Operational semantics
+## Value-or-updater semantics
 
-- `Lens#set` and `Prism#set` accept either a concrete value or an updater function.
-- Original inputs are never mutated.
-- Updaters that do not change the focused value preserve the original reference when the library can prove it.
-- `Prism#get` returns `undefined` when the focused branch is absent.
-- Composed prism writes through an absent branch are no-ops by default.
-- `Traversal#modify` applies a transformation to every focused element.
+`Lens#set` and `Prism#set` both accept either:
 
-## Important edge case
+- a concrete replacement value
+- an updater function `(current) => next`
 
-`Prism` composed with `Iso` has one special materialization rule:
+The two forms are not interchangeable in partial situations.
 
-- concrete writes may construct the missing intermediate via the outer prism's setter
-- updater writes remain no-ops when the branch is absent
+### Concrete writes
 
-This is the one place where total invertibility leaks enough structure to synthesize the missing middle.
+Concrete writes can materialize when the optic itself knows how to construct the missing branch:
 
-## Stable neighbors
+- a bare `Prism` created with `Prism().of(...)` delegates to its own setter
+- `guard` can replace a non-matching branch with a matching one
+- `at` upserts a missing key
+- `Prism ∘ Iso` can materialize because the `Iso` can reconstruct the missing intermediate value
 
-- [Composition](composition.md) explains why certain pairs degrade to `Prism`, `Traversal`, or `Fold`.
-- [Best practices](best-practices.md) turns these guarantees into caller guidance.
+### Updater writes
+
+Updater writes require a current focused value.
+If the optic cannot read a current value, the update is a no-op.
+
+This holds for:
+
+- `Prism().of(...)` when `get` returns `undefined`
+- `guard` on a non-matching branch
+- `at` on an absent key
+- `index` when out of bounds
+- composed partial paths where an outer branch is missing
+- `Prism ∘ Iso` when the outer branch is missing
+
+## Absent-branch no-ops in composed paths
+
+The key operational rule for composition is that missing intermediate branches do not get fabricated by default.
+
+```ts
+import { Lens, Prism, compose } from '@fuiste/optics'
+
+type Address = { city: string }
+type Person = { address?: Address }
+
+const address = Prism<Person>().of({
+  get: (person) => person.address,
+  set: (next) => (person) => ({ ...person, address: next }),
+})
+
+const city = compose(address, Lens<Address>().prop('city'))
+
+city.get({}) // undefined
+city.set('Paris')({}) // unchanged
+city.set((name) => name.toUpperCase())({}) // unchanged
+```
+
+That behaviour is what keeps a composed `Prism` honest. Without it, partial optics would quietly become structure-synthesis machinery.
+
+## `Prism ∘ Iso` materialization
+
+There is one explicit exception to the general no-op rule.
+
+```ts
+import { Iso, Prism, compose } from '@fuiste/optics'
+
+type Model = { count?: number }
+
+const count = Prism<Model>().of({
+  get: (model) => model.count,
+  set: (next) => (model) => ({ ...model, count: next }),
+})
+
+const asString = Iso<number, string>({
+  to: (n) => `${n}`,
+  from: (s) => parseInt(s, 10),
+})
+
+const countText = compose(count, asString)
+
+countText.set('9')({}) // { count: 9 }
+countText.set((value) => `${parseInt(value, 10) + 1}`)({}) // unchanged
+```
+
+The distinction is deliberate:
+
+- a concrete value can be pushed backward through the `Iso` via `from`
+- an updater function still needs an existing focused value to run against
+
+## Traversal semantics
+
+`Traversal` is the writable many-focus optic.
+
+- `getAll` returns every focused value in order.
+- `modify` applies the mapper to every focused value.
+- If a traversal is composed through a missing outer `Prism`, `modify` is a no-op.
+- The built-in `each()` traversal preserves the original array reference when no element changes.
+
+Representative example:
+
+```ts
+import { each } from '@fuiste/optics'
+
+const nums = each<number>()
+
+nums.getAll([1, 2, 3]) // [1, 2, 3]
+nums.modify((n) => n * 2)([1, 2, 3]) // [2, 4, 6]
+nums.modify((n) => n)([1, 2, 3]) // same array reference
+```
+
+## Identity preservation
+
+Where the implementation can prove that an update is unchanged, it returns the original source reference.
+This is an observable and tested property, not an accidental optimization.
+
+Examples covered by the tests:
+
+- `Lens#set` with the existing value returns the original source.
+- `Lens#set` with an identity updater returns the original source.
+- `Prism#set` returns the original source when the branch is unchanged.
+- `index(i)` returns the original array when the focused element is unchanged or out of bounds.
+- `each().modify(identity)` returns the original array.
+- composed `Lens` and composed `Prism` updates preserve identity when the focused value does not change.
+
+Do not assume the converse. A changed value may still force new outer structure, because immutability is doing its job.
+
+## Law-like expectations
+
+### Lens laws
+
+The test suite encodes the familiar lens laws:
+
+- get-set: `lens.set(lens.get(s))(s) === s`
+- set-get: `lens.get(lens.set(a)(s)) === a`
+- set-set: the latest write wins
+
+These are exercised on a composed lens, which is the interesting case because it verifies nested immutable updates rather than trivial projection.
+
+### Iso round-trips
+
+The test suite also asserts the usual isomorphism expectations:
+
+- `from(to(s)) === s`
+- `to(from(a)) === a`
+
+Those equalities are only as honest as the functions you supply to `Iso`. An `Iso` whose `to` and `from` are not actual inverses is merely a pair of functions wearing a fake moustache.
+
+## Read-only outcomes
+
+When a composition yields `Getter` or `Fold`, mutation operations disappear from the API.
+
+- `Getter` has `get` and no `set`
+- `Fold` has `getAll` and no `modify`
+
+This is both a semantic constraint and a practical one: the composed value literally lacks those methods.
+
+## Related pages
+
+- [Composition](composition.md) for the result-kind matrix behind these behaviours.
+- [Combinators](combinators.md) for the standard partial and many-focus constructors.
+- [Best practices](best-practices.md) for guidance on using these guarantees without turning your data model into performance theater.
