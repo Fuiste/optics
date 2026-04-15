@@ -34,10 +34,21 @@ bun add @fuiste/optics
 
 ## Documentation
 
-`README.md` remains the primary installation and first-run surface.
-Deeper reference material lives in [`docs/README.md`](docs/README.md), which is the canonical docs home consumed by both the repository and the future Pages wrapper.
+`README.md` stays responsible for installation and the smallest useful path from zero to composed optics.
+Stay here if you need package setup, runtime requirements, or the first example of each optic kind.
+
+When you need the longer explanation, start at [`docs/README.md`](docs/README.md).
+That directory is the canonical docs home for the deeper material:
+
+- [`docs/quick-start.md`](docs/quick-start.md) for the guided tour after these inline examples
+- [`docs/composition.md`](docs/composition.md) and [`docs/combinators.md`](docs/combinators.md) for the result-kind algebra and standard helpers
+- [`docs/api-reference.md`](docs/api-reference.md), [`docs/semantics-and-laws.md`](docs/semantics-and-laws.md), and [`docs/best-practices.md`](docs/best-practices.md) for reference material
+
+Any hosted wrapper, including a future Pages site, should project this same docs corpus rather than fork it into a second manual.
 
 ## Quick start
+
+The examples below are the fast path. If you want the same material with more narrative and cross-links, continue with [`docs/quick-start.md`](docs/quick-start.md).
 
 ### Lens (required data)
 
