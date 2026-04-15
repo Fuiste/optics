@@ -1,0 +1,236 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f4f1e8;
+  --panel-bg: rgba(255, 255, 255, 0.78);
+  --panel-border: rgba(40, 44, 52, 0.14);
+  --text: #1f2430;
+  --muted: #5d6778;
+  --accent: #0f766e;
+  --accent-soft: rgba(15, 118, 110, 0.12);
+  --code-bg: rgba(31, 36, 48, 0.06);
+  --shadow: 0 24px 60px rgba(31, 36, 48, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 32%),
+    linear-gradient(180deg, #faf6ee 0%, var(--page-bg) 100%);
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font:
+    400 16px/1.6 'Iowan Old Style',
+    'Palatino Linotype',
+    'Book Antiqua',
+    Palatino,
+    'URW Palladio L',
+    serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+code,
+pre {
+  font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.site-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 20px;
+}
+
+.site-header__brand,
+.site-header__source {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-header__brand {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site-header__source {
+  color: var(--muted);
+}
+
+.site-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.site-sidebar,
+.site-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.site-sidebar {
+  position: sticky;
+  top: 24px;
+  padding: 20px 16px;
+}
+
+.site-nav {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav li + li {
+  margin-top: 8px;
+}
+
+.site-nav__link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-nav__link:hover,
+.site-nav__link:focus-visible,
+.site-nav__link.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.site-content {
+  padding: 32px;
+}
+
+.prose {
+  max-width: 72ch;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  line-height: 1.15;
+}
+
+.prose h1 {
+  margin-bottom: 20px;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+}
+
+.prose h2 {
+  margin-top: 40px;
+  margin-bottom: 14px;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.prose h3 {
+  margin-top: 28px;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose table,
+.prose pre {
+  margin: 0 0 18px;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 22px;
+}
+
+.prose li + li {
+  margin-top: 8px;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+}
+
+.prose th,
+.prose td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--panel-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  background: rgba(31, 36, 48, 0.05);
+}
+
+.prose tr:last-child td {
+  border-bottom: none;
+}
+
+.prose pre,
+.prose code {
+  background: var(--code-bg);
+  border-radius: 12px;
+}
+
+.prose code {
+  padding: 0.18em 0.4em;
+}
+
+.prose pre {
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 860px) {
+  .site-shell {
+    width: min(100% - 24px, 1180px);
+    padding-top: 24px;
+  }
+
+  .site-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .site-sidebar {
+    position: static;
+  }
+
+  .site-content {
+    padding: 24px;
+  }
+}

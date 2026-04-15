@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "docs:build": "node ./scripts/build-docs-site.mjs",
     "test": "vitest run",
     "test:types": "tsc --noEmit -p tsconfig.types.json",
     "lint": "eslint . --ext .ts,.tsx,.js,.mjs,.cjs",
@@ -51,6 +52,7 @@
     "eslint-plugin-unused-imports": "^4.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
+    "marked": "^18.0.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
