@@ -32,6 +32,11 @@ bun add @fuiste/optics
 - Package manager: `pnpm`
 - Supported Node.js: `>=20.19.0`
 
+## Documentation
+
+`README.md` remains the primary installation and first-run surface.
+Deeper reference material lives in [`docs/README.md`](docs/README.md), which is the canonical docs home consumed by both the repository and the future Pages wrapper.
+
 ## Quick start
 
 ### Lens (required data)
@@ -142,14 +147,14 @@ words.getAll('hello world') // ['hello', 'world']
 
 All optics compose via the standalone `compose(outer, inner)` function. The return type is determined automatically:
 
-| outer ∖ inner | **Lens** | **Prism** | **Iso** | **Traversal** | **Getter** | **Fold** |
-| ------------- | -------- | --------- | ------- | ------------- | ---------- | -------- |
-| **Lens**      | Lens     | Prism     | Lens    | Traversal     | Getter     | Fold     |
-| **Prism**     | Prism    | Prism     | Prism   | Traversal     | Fold       | Fold     |
-| **Iso**       | Lens     | Prism     | Iso     | Traversal     | Getter     | Fold     |
-| **Traversal** | Traversal| Traversal | Traversal| Traversal    | Fold       | Fold     |
-| **Getter**    | Getter   | Fold      | Getter  | Fold          | Getter     | Fold     |
-| **Fold**      | Fold     | Fold      | Fold    | Fold          | Fold       | Fold     |
+| outer ∖ inner | **Lens**  | **Prism** | **Iso**   | **Traversal** | **Getter** | **Fold** |
+| ------------- | --------- | --------- | --------- | ------------- | ---------- | -------- |
+| **Lens**      | Lens      | Prism     | Lens      | Traversal     | Getter     | Fold     |
+| **Prism**     | Prism     | Prism     | Prism     | Traversal     | Fold       | Fold     |
+| **Iso**       | Lens      | Prism     | Iso       | Traversal     | Getter     | Fold     |
+| **Traversal** | Traversal | Traversal | Traversal | Traversal     | Fold       | Fold     |
+| **Getter**    | Getter    | Fold      | Getter    | Fold          | Getter     | Fold     |
+| **Fold**      | Fold      | Fold      | Fold      | Fold          | Fold       | Fold     |
 
 **Rules of thumb:**
 
@@ -319,7 +324,13 @@ type Fold<S, A> = {
   getAll: (s: S) => ReadonlyArray<A>
 }
 
-type Optic<S, A> = Lens<S, A> | Prism<S, A> | Iso<S, A> | Traversal<S, A> | Getter<S, A> | Fold<S, A>
+type Optic<S, A> =
+  | Lens<S, A>
+  | Prism<S, A>
+  | Iso<S, A>
+  | Traversal<S, A>
+  | Getter<S, A>
+  | Fold<S, A>
 ```
 
 ### Factories

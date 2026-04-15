@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "home": {
+    "title": "Optics documentation",
+    "path": "README.md"
+  },
+  "pages": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "path": "quick-start.md"
+    },
+    {
+      "id": "composition",
+      "title": "Composition",
+      "path": "composition.md"
+    },
+    {
+      "id": "combinators",
+      "title": "Combinators",
+      "path": "combinators.md"
+    },
+    {
+      "id": "api-reference",
+      "title": "API reference",
+      "path": "api-reference.md"
+    },
+    {
+      "id": "semantics-and-laws",
+      "title": "Semantics and laws",
+      "path": "semantics-and-laws.md"
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "path": "best-practices.md"
+    }
+  ]
+}
