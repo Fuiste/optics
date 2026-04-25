@@ -3,6 +3,19 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["src", "test/types.check.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "src/_internal.ts",
+    "src/combinators.ts",
+    "src/compose.ts",
+    "src/fold.ts",
+    "src/getter.ts",
+    "src/index.ts",
+    "src/iso.ts",
+    "src/lens.ts",
+    "src/prism.ts",
+    "src/traversal.ts",
+    "src/types.ts",
+    "test/types.check.ts"
+  ],
+  "exclude": ["dist", "node_modules", "src/content/**", "src/pages/**", "src/layouts/**"]
 }

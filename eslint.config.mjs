@@ -5,7 +5,7 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import prettier from 'eslint-config-prettier'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**', '.astro/**', '.night-shift/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -16,7 +16,10 @@ export default [
       'unused-imports/no-unused-imports': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_$' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_$' },
+      ],
     },
   },
   prettier,
