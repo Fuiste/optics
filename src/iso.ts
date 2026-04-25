@@ -9,10 +9,7 @@ import type { Iso } from './types.js'
  * numStr.from('7') // 7
  * ```
  */
-export const makeIso = <S, A>(iso: {
-  to: (s: S) => A
-  from: (a: A) => S
-}): Iso<S, A> => ({
+export const makeIso = <S, A>(iso: { to: (s: S) => A; from: (a: A) => S }): Iso<S, A> => ({
   _tag: 'iso',
   ...iso,
 })

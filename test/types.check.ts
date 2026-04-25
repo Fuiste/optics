@@ -5,10 +5,7 @@ import type { InferSource, InferTarget } from '../src'
 
 type Assert<T extends true> = T
 type IsEqual<A, B> =
-  (<T>() => T extends A ? 1 : 2) extends
-    (<T>() => T extends B ? 1 : 2)
-    ? true
-    : false
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 type TagOf<T> = T extends { _tag: infer Tag } ? Tag : never
 
 type Inner = { value: number; maybe?: number; list: number[] }

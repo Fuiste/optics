@@ -18,13 +18,13 @@ export const guard = <S, A extends S>(predicate: (s: S) => s is A): Prism<S, A> 
     set:
       (a) =>
       <T extends S>(s: T) => {
-      if (typeof a === 'function') {
-        if (!predicate(s)) return s
-        const next = (a as (a: A) => A)(s)
-        return (Object.is(next, s) ? s : next) as unknown as T
-      }
+        if (typeof a === 'function') {
+          if (!predicate(s)) return s
+          const next = (a as (a: A) => A)(s)
+          return (Object.is(next, s) ? s : next) as unknown as T
+        }
 
-      return (Object.is(a, s) ? s : a) as unknown as T
+        return (Object.is(a, s) ? s : a) as unknown as T
       },
   })
 
@@ -44,16 +44,16 @@ export const at = <V>(key: string): Prism<Readonly<Record<string, V>>, V> =>
     set:
       (v) =>
       <T extends Readonly<Record<string, V>>>(s: T) => {
-      const current = s[key]
+        const current = s[key]
 
-      if (typeof v === 'function') {
-        if (current === undefined) return s
-        const next = (v as (v: V) => V)(current)
-        return (Object.is(next, current) ? s : { ...s, [key]: next }) as T
-      }
+        if (typeof v === 'function') {
+          if (current === undefined) return s
+          const next = (v as (v: V) => V)(current)
+          return (Object.is(next, current) ? s : { ...s, [key]: next }) as T
+        }
 
-      if (current !== undefined && Object.is(v, current)) return s
-      return { ...s, [key]: v } as T
+        if (current !== undefined && Object.is(v, current)) return s
+        return { ...s, [key]: v } as T
       },
   })
 
@@ -67,15 +67,13 @@ export const index = <A>(idx: number): Prism<ReadonlyArray<A>, A> =>
     set:
       (valueOrFn) =>
       <T extends ReadonlyArray<A>>(items: T) => {
-      if (!hasIndex(items, idx)) return items
+        if (!hasIndex(items, idx)) return items
 
-      const current = items[idx]!
-      const next =
-        typeof valueOrFn === 'function'
-          ? (valueOrFn as (value: A) => A)(current)
-          : valueOrFn
+        const current = items[idx]!
+        const next =
+          typeof valueOrFn === 'function' ? (valueOrFn as (value: A) => A)(current) : valueOrFn
 
-      return (Object.is(next, current) ? items : setArraySlot(items, idx, next)) as T
+        return (Object.is(next, current) ? items : setArraySlot(items, idx, next)) as T
       },
   })
 

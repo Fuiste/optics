@@ -31,8 +31,8 @@ describe('Iso', () => {
     type Celsius = { celsius: number }
     type Fahrenheit = { fahrenheit: number }
     const tempIso = Iso<Celsius, Fahrenheit>({
-      to: (c) => ({ fahrenheit: c.celsius * 9 / 5 + 32 }),
-      from: (f) => ({ celsius: (f.fahrenheit - 32) * 5 / 9 }),
+      to: (c) => ({ fahrenheit: (c.celsius * 9) / 5 + 32 }),
+      from: (f) => ({ celsius: ((f.fahrenheit - 32) * 5) / 9 }),
     })
     expect(tempIso.to({ celsius: 100 })).toMatchInlineSnapshot(`
       {

@@ -667,9 +667,8 @@ describe('Fold results (selected combos)', () => {
     const strlen = Getter<Address, number>((a) => a.city.length)
     const composed = compose(addressPrism, strlen)
     expect(composed._tag).toBe('fold')
-    expect(
-      composed.getAll({ name: 'A', age: 1, address: { street: 's', city: 'NYC' } }),
-    ).toMatchInlineSnapshot(`
+    expect(composed.getAll({ name: 'A', age: 1, address: { street: 's', city: 'NYC' } }))
+      .toMatchInlineSnapshot(`
       [
         3,
       ]
@@ -700,9 +699,7 @@ describe('Fold results (selected combos)', () => {
     const nameGetter = Getter<Item, string>((i) => i.name)
     const composed = compose(eachItem, nameGetter)
     expect(composed._tag).toBe('fold')
-    expect(
-      composed.getAll([{ name: 'A' }, { name: 'B' }]),
-    ).toMatchInlineSnapshot(`
+    expect(composed.getAll([{ name: 'A' }, { name: 'B' }])).toMatchInlineSnapshot(`
       [
         "A",
         "B",
@@ -731,9 +728,7 @@ describe('Fold results (selected combos)', () => {
     const valueLens = Lens<Item>().prop('value')
     const composed = compose(items, valueLens)
     expect(composed._tag).toBe('fold')
-    expect(
-      composed.getAll([{ value: 1 }, { value: 2 }]),
-    ).toMatchInlineSnapshot(`
+    expect(composed.getAll([{ value: 1 }, { value: 2 }])).toMatchInlineSnapshot(`
       [
         1,
         2,
@@ -806,9 +801,7 @@ describe('multi-step composition chains', () => {
     const authHeader = at<string>('Authorization')
     const configAuth = compose(headersLens, authHeader)
 
-    expect(
-      configAuth.get({ headers: { Authorization: 'Bearer x' } }),
-    ).toBe('Bearer x')
+    expect(configAuth.get({ headers: { Authorization: 'Bearer x' } })).toBe('Bearer x')
     expect(configAuth.get({ headers: {} })).toBeUndefined()
 
     const updated = configAuth.set('Bearer y')({ headers: { Authorization: 'Bearer x' } })

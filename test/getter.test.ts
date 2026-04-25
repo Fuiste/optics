@@ -7,9 +7,7 @@ describe('Getter', () => {
   const fullName = Getter<Person, string>((p) => `${p.firstName} ${p.lastName}`)
 
   it('extracts a computed value', () => {
-    expect(
-      fullName.get({ firstName: 'Alice', lastName: 'Smith', age: 30 }),
-    ).toBe('Alice Smith')
+    expect(fullName.get({ firstName: 'Alice', lastName: 'Smith', age: 30 })).toBe('Alice Smith')
   })
 
   it('is tagged as getter', () => {

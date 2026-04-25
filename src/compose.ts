@@ -15,8 +15,7 @@ const resultTag = (outer: Tag, inner: Tag): Tag => {
   if (outer === 'fold' || inner === 'fold') return 'fold'
   if (outer === 'getter' || inner === 'getter') {
     const hasPartial =
-      outer === 'prism' || inner === 'prism' ||
-      outer === 'traversal' || inner === 'traversal'
+      outer === 'prism' || inner === 'prism' || outer === 'traversal' || inner === 'traversal'
     return hasPartial ? 'fold' : 'getter'
   }
   if (outer === 'traversal' || inner === 'traversal') return 'traversal'
@@ -32,22 +31,24 @@ const totalGet = (o: Optic): ((s: any) => any) =>
   o._tag === 'iso' ? o.to : (o as Lens<any, any> | Getter<any, any>).get
 
 /** Normalize any optic to a multi-value getter. */
-const allValues = (o: Optic) => (s: any): ReadonlyArray<any> => {
-  switch (o._tag) {
-    case 'lens':
-    case 'getter':
-      return [o.get(s)]
-    case 'iso':
-      return [o.to(s)]
-    case 'prism': {
-      const v = o.get(s)
-      return v === undefined ? [] : [v]
+const allValues =
+  (o: Optic) =>
+  (s: any): ReadonlyArray<any> => {
+    switch (o._tag) {
+      case 'lens':
+      case 'getter':
+        return [o.get(s)]
+      case 'iso':
+        return [o.to(s)]
+      case 'prism': {
+        const v = o.get(s)
+        return v === undefined ? [] : [v]
+      }
+      case 'traversal':
+      case 'fold':
+        return o.getAll(s)
     }
-    case 'traversal':
-    case 'fold':
-      return o.getAll(s)
   }
-}
 
 const collectAll = (outer: Optic, inner: Optic, source: any): ReadonlyArray<any> => {
   const outerVals = allValues(outer)(source)
@@ -66,7 +67,9 @@ const collectAll = (outer: Optic, inner: Optic, source: any): ReadonlyArray<any>
 }
 
 /** Apply a modification function through any writable optic. */
-const modThrough = (o: Optic) => (f: (a: any) => any) =>
+const modThrough =
+  (o: Optic) =>
+  (f: (a: any) => any) =>
   <T>(s: T): T => {
     switch (o._tag) {
       case 'lens': {
@@ -154,17 +157,17 @@ export function compose(outer: Optic, inner: Optic): Optic {
       from: (b: any) => (outer as Iso<any, any>).from((inner as Iso<any, any>).from(b)),
     })
 
-  if (tag === 'fold')
-    return makeFold((s: any) => collectAll(outer, inner, s))
+  if (tag === 'fold') return makeFold((s: any) => collectAll(outer, inner, s))
 
-  if (tag === 'getter')
-    return makeGetter((s: any) => totalGet(inner)(totalGet(outer)(s)))
+  if (tag === 'getter') return makeGetter((s: any) => totalGet(inner)(totalGet(outer)(s)))
 
   if (tag === 'traversal')
     return makeTraversal({
       getAll: (s: any) => collectAll(outer, inner, s),
-      modify: (f: (a: any) => any) =>
-        <T>(s: T) => modThrough(outer)((a: any) => modThrough(inner)(f)(a))(s),
+      modify:
+        (f: (a: any) => any) =>
+        <T>(s: T) =>
+          modThrough(outer)((a: any) => modThrough(inner)(f)(a))(s),
     })
 
   if (tag === 'lens')
@@ -172,15 +175,15 @@ export function compose(outer: Optic, inner: Optic): Optic {
       (s: any) => totalGet(inner)(totalGet(outer)(s)),
       (b: any) =>
         <T>(s: T) =>
-        modThrough(outer)((a: any) => {
-          if (inner._tag === 'iso') {
-            const current = (inner as Iso<any, any>).to(a)
-            const next = resolve(b, current)
-            return Object.is(next, current) ? a : (inner as Iso<any, any>).from(next)
-          }
+          modThrough(outer)((a: any) => {
+            if (inner._tag === 'iso') {
+              const current = (inner as Iso<any, any>).to(a)
+              const next = resolve(b, current)
+              return Object.is(next, current) ? a : (inner as Iso<any, any>).from(next)
+            }
 
-          return (inner as Lens<any, any>).set(b)(a)
-        })(s),
+            return (inner as Lens<any, any>).set(b)(a)
+          })(s),
     )
 
   // tag === 'prism'
@@ -195,19 +198,19 @@ export function compose(outer: Optic, inner: Optic): Optic {
       set:
         (b: any) =>
         <T>(s: T) => {
-        const current = (outer as Prism<any, any>).get(s)
+          const current = (outer as Prism<any, any>).get(s)
 
-        if (typeof b === 'function') {
-          if (current === undefined) return s
-          const currentInner = iso.to(current)
-          const nextInner = (b as (x: any) => any)(currentInner)
-          return Object.is(nextInner, currentInner)
-            ? s
-            : (outer as Prism<any, any>).set(iso.from(nextInner))(s) as T
-        }
+          if (typeof b === 'function') {
+            if (current === undefined) return s
+            const currentInner = iso.to(current)
+            const nextInner = (b as (x: any) => any)(currentInner)
+            return Object.is(nextInner, currentInner)
+              ? s
+              : ((outer as Prism<any, any>).set(iso.from(nextInner))(s) as T)
+          }
 
-        if (current !== undefined && Object.is(iso.to(current), b)) return s
-        return (outer as Prism<any, any>).set(iso.from(b))(s) as T
+          if (current !== undefined && Object.is(iso.to(current), b)) return s
+          return (outer as Prism<any, any>).set(iso.from(b))(s) as T
         },
     })
   }

@@ -9,5 +9,7 @@ export default defineConfig({
   minify: false,
   target: 'es2020',
   treeshake: true,
-  esbuildOptions(options) { options.outExtension = { '.js': '.mjs' } },
+  esbuildOptions(options) {
+    options.outExtension = { '.js': '.mjs' }
+  },
 })
